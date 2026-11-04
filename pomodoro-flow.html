@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Flow - Mantenha o Foco</title>
+
+    <!-- Tailwind CSS & DaisyUI CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+    
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .timer-display {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        html {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Custom scrollbar para lista de tarefas */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        /* Item sendo arrastado */
+        .task-dragging {
+            opacity: 0.4;
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-base-300 text-base-content flex flex-col justify-between transition-all duration-300">
+
+    <!-- CABEÇALHO DA APLICAÇÃO -->
+    <header class="w-full max-w-5xl mx-auto px-4 py-5 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary text-primary-content flex items-center justify-center font-bold text-xl shadow-lg">
+                <i class="fa-solid fa-fire text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-tight">Pomodoro <span class="text-primary">Flow</span></h1>
+                <p class="text-xs opacity-70">Produtividade & Foco</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Botão Painel de Áudio Ambient -->
+            <button onclick="drawer_audio.classList.toggle('drawer-open')" class="btn btn-ghost btn-circle" title="Sons de Fundo & Áudio">
+                <i class="fa-solid fa-headphones text-lg"></i>
+            </button>
+
+            <!-- Botão Configurações -->
+            <button onclick="modal_settings.showModal()" class="btn btn-ghost btn-circle" title="Configurações">
+                <i class="fa-solid fa-sliders text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL (LAYOUT EM DUAS COLUNAS EM TELAS MAIORES) -->
+    <main class="flex-1 w-full max-w-5xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- COLUNA ESQUERDA: CARD DO POMODORO -->
+        <section class="lg:col-span-7 flex flex-col items-center">
+            <div class="w-full bg-base-100 rounded-3xl p-6 sm:p-8 shadow-2xl border border-base-200">
+                
+                <!-- TAB DE NAVEGAÇÃO DOS MODOS -->
+                <div class="tabs tabs-boxed bg-base-200 p-1.5 rounded-2xl flex justify-between gap-1 mb-6">
+                    <button id="tab-focus" onclick="pomodoroApp.switchMode('focus')" class="tab tab-md sm:tab-lg flex-1 rounded-xl text-xs sm:text-base font-semibold transition-all">
+                        <i class="fa-solid fa-brain mr-2 hidden sm:inline"></i>Foco
+                    </button>
+                    <button id="tab-shortBreak" onclick="pomodoroApp.switchMode('shortBreak')" class="tab tab-md sm:tab-lg flex-1 rounded-xl text-xs sm:text-base font-semibold transition-all">
+                        <i class="fa-solid fa-mug-hot mr-2 hidden sm:inline"></i>Pausa Curta
+                    </button>
+                    <button id="tab-longBreak" onclick="pomodoroApp.switchMode('longBreak')" class="tab tab-md sm:tab-lg flex-1 rounded-xl text-xs sm:text-base font-semibold transition-all">
+                        <i class="fa-solid fa-couch mr-2 hidden sm:inline"></i>Pausa Longa
+                    </button>
+                </div>
+
+                <!-- EXIBIÇÃO DO TEMPORIZADOR CIRCULAR -->
+                <div class="flex flex-col items-center justify-center my-4">
+                    <div class="relative w-60 h-60 sm:w-68 sm:h-68 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="4" fill="transparent" class="text-base-200"></circle>
+                            <circle id="progress-ring" cx="50" cy="50" r="44" stroke="currentColor" stroke-width="5" fill="transparent" stroke-dasharray="276.46" stroke-dashoffset="0" stroke-linecap="round" class="text-primary transition-all duration-1000 ease-linear"></circle>
+                        </svg>
+
+                        <div class="absolute flex flex-col items-center justify-center text-center">
+                            <span id="timer-text" class="timer-display text-5xl sm:text-6xl font-extrabold tracking-tight">25:00</span>
+                            <span id="mode-badge" class="mt-3 badge badge-primary badge-outline font-medium px-4 py-2 uppercase text-xs tracking-wider">
+                                Foco
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROLES PRINCIPAIS (PLAY / PAUSE / RESET / SKIP) -->
+                <div class="flex items-center justify-center gap-3 mt-4">
+                    <button onclick="pomodoroApp.resetTimer()" class="btn btn-circle btn-ghost text-base-content/70 hover:text-base-content" title="Reiniciar Sessão">
+                        <i class="fa-solid fa-rotate-right text-lg"></i>
+                    </button>
+
+                    <button id="btn-toggle" onclick="pomodoroApp.toggleTimer()" class="btn btn-primary px-8 btn-lg rounded-2xl text-lg font-bold shadow-lg shadow-primary/30">
+                        <i id="btn-toggle-icon" class="fa-solid fa-play mr-2"></i>
+                        <span id="btn-toggle-text">INICIAR</span>
+                    </button>
+
+                    <button onclick="pomodoroApp.skipMode()" class="btn btn-circle btn-ghost text-base-content/70 hover:text-base-content" title="Pular para próximo modo">
+                        <i class="fa-solid fa-forward-step text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- INDICADOR DE TAREFA ATIVA NO TIMER -->
+                <div id="active-task-banner" class="mt-6 p-3 bg-base-200/60 rounded-2xl flex items-center justify-between text-xs sm:text-sm hidden">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fa-solid fa-bullseye text-primary animate-pulse"></i>
+                        <span class="truncate">Foco atual: <strong id="active-task-title" class="text-base-content font-bold">---</strong></span>
+                    </div>
+                    <button onclick="taskManager.clearActiveTask()" class="btn btn-xs btn-ghost btn-circle" title="Desvincular Tarefa">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- INDICADOR DE CICLOS -->
+                <div class="mt-6 pt-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/70">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-success"></i>
+                        <span>Sessões: <strong id="cycle-count" class="text-base-content font-bold">0</strong></span>
+                    </div>
+                    <div>
+                        <span>Próxima pausa longa: em <strong id="next-long-break-count" class="text-primary font-bold">4</strong> focos</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- COLUNA DIREITA: GERENCIADOR DE TAREFAS -->
+        <section class="lg:col-span-5 w-full">
+            <div class="bg-base-100 rounded-3xl p-6 shadow-2xl border border-base-200 flex flex-col h-full min-h-[480px]">
+                
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-primary text-lg"></i>
+                        <h2 class="font-bold text-lg">Tarefas</h2>
+                    </div>
+                    <span id="task-stats" class="text-xs bg-base-200 px-3 py-1 rounded-full font-semibold opacity-80">0 / 0 concluidas</span>
+                </div>
+
+                <!-- FORMULÁRIO DE ADIÇÃO DE TAREFA -->
+                <form id="form-add-task" onsubmit="taskManager.handleAddTask(event)" class="flex flex-col gap-2 mb-4">
+                    <div class="flex gap-2">
+                        <input id="input-task-title" type="text" placeholder="O que você vai focar hoje?" class="input input-bordered input-sm flex-1 rounded-xl text-sm" required />
+                        <input id="input-task-est" type="number" min="1" max="20" value="1" title="Estimativa de Pomodoros" class="input input-bordered input-sm w-16 rounded-xl text-center text-sm font-semibold" />
+                        <button type="submit" class="btn btn-primary btn-sm rounded-xl">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- LISTA COM SUPORTE A DRAG & DROP -->
+                <div id="task-list" class="flex-1 custom-scroll overflow-y-auto space-y-2 pr-1 max-h-[360px]">
+                    <!-- Itens renderizados dinamicamente via JS -->
+                </div>
+
+                <!-- MENSAGEM VAZIA -->
+                <div id="empty-task-state" class="flex flex-col items-center justify-center my-auto py-8 text-center text-base-content/50">
+                    <i class="fa-solid fa-clipboard-list text-4xl mb-2 opacity-30"></i>
+                    <p class="text-xs">Nenhuma tarefa criada.<br>Adicione uma tarefa e defina sua meta!</p>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- GAVETA LATERAL (DRAWER) - GERENCIADOR DE ÁUDIO -->
+    <div id="drawer_audio" class="fixed inset-0 z-50 pointer-events-none flex justify-end">
+        <!-- Backdrop -->
+        <div onclick="drawer_audio.classList.remove('drawer-open')" class="drawer-overlay fixed inset-0 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity pointer-events-none"></div>
+        
+        <!-- Conteúdo do Painel -->
+        <div class="drawer-content-panel w-full max-w-md bg-base-100 h-full p-6 shadow-2xl border-l border-base-200 pointer-events-auto transform translate-x-full transition-transform duration-300 flex flex-col justify-between overflow-y-auto">
+            <div>
+                <div class="flex items-center justify-between mb-4 border-b border-base-200 pb-4">
+                    <h3 class="font-bold text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-headphones text-primary"></i> Central de Som & Música
+                    </h3>
+                    <button onclick="drawer_audio.classList.remove('drawer-open')" class="btn btn-sm btn-ghost btn-circle">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- CONTROLE DE VOLUME GLOBAL E MUTE -->
+                <div class="bg-base-200 p-4 rounded-2xl mb-4 space-y-3">
+                    <div class="flex items-center justify-between text-xs font-semibold">
+                        <span>Volume Geral</span>
+                        <span id="volume-display-val">70%</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="btn-mute" onclick="audioManager.toggleMute()" class="btn btn-circle btn-sm btn-ghost text-primary">
+                            <i id="mute-icon" class="fa-solid fa-volume-high"></i>
+                        </button>
+                        <input id="input-volume" type="range" min="0" max="100" value="70" oninput="audioManager.setMasterVolume(this.value)" class="range range-xs range-primary flex-1" />
+                    </div>
+                </div>
+
+                <!-- ABAS DE NAVEGAÇÃO DE FONTE DE ÁUDIO -->
+                <div class="tabs tabs-boxed bg-base-200 p-1 rounded-2xl flex justify-between gap-1 mb-4">
+                    <button id="audio-tab-local" onclick="audioManager.switchSourceTab('local')" class="tab tab-sm flex-1 rounded-xl font-bold text-xs">
+                        <i class="fa-solid fa-sliders mr-1"></i> Ruídos
+                    </button>
+                    <button id="audio-tab-youtube" onclick="audioManager.switchSourceTab('youtube')" class="tab tab-sm flex-1 rounded-xl font-bold text-xs">
+                        <i class="fa-brands fa-youtube mr-1 text-error"></i> YouTube
+                    </button>
+                    <button id="audio-tab-playlist" onclick="audioManager.switchSourceTab('playlist')" class="tab tab-sm flex-1 rounded-xl font-bold text-xs">
+                        <i class="fa-solid fa-list-ul mr-1 text-accent"></i> Playlist
+                    </button>
+                </div>
+
+                <!-- CONTEÚDO DAS ABAS -->
+                <!-- ABA 1: RUÍDOS LOCAIS SINTETIZADOS -->
+                <div id="audio-panel-local" class="audio-tab-panel">
+                    <label class="label text-xs font-extrabold uppercase tracking-wider text-base-content/70">Ruído de Fundo Ambient</label>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                        <button onclick="audioManager.setAmbientTrack('none')" class="ambient-btn btn btn-sm btn-outline rounded-xl justify-start text-xs font-normal" data-track="none">
+                            <i class="fa-solid fa-volume-xmark mr-1"></i> Nenhum
+                        </button>
+                        <button onclick="audioManager.setAmbientTrack('rain')" class="ambient-btn btn btn-sm btn-outline rounded-xl justify-start text-xs font-normal" data-track="rain">
+                            <i class="fa-solid fa-cloud-rain mr-1 text-info"></i> Chuva
+                        </button>
+                        <button onclick="audioManager.setAmbientTrack('campfire')" class="ambient-btn btn btn-sm btn-outline rounded-xl justify-start text-xs font-normal" data-track="campfire">
+                            <i class="fa-solid fa-fire mr-1 text-warning"></i> Fogueira
+                        </button>
+                        <button onclick="audioManager.setAmbientTrack('waves')" class="ambient-btn btn btn-sm btn-outline rounded-xl justify-start text-xs font-normal" data-track="waves">
+                            <i class="fa-solid fa-water mr-1 text-accent"></i> Ondas
+                        </button>
+                        <button onclick="audioManager.setAmbientTrack('wind')" class="ambient-btn btn btn-sm btn-outline rounded-xl justify-start text-xs font-normal" data-track="wind">
+                            <i class="fa-solid fa-wind mr-1 text-secondary"></i> Vento
+                        </button>
+                        <button onclick="audioManager.setAmbientTrack('ticking')" class="ambient-btn btn btn-sm btn-outline rounded-xl justify-start text-xs font-normal" data-track="ticking">
+                            <i class="fa-solid fa-clock mr-1 text-primary"></i> Ticking
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ABA 2: PLAYER YOUTUBE EMBUTIDO -->
+                <div id="audio-panel-youtube" class="audio-tab-panel hidden space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="label text-xs font-extrabold uppercase tracking-wider text-base-content/70">Música do YouTube</label>
+                        <!-- TOGGLE MODO COMPACTO / EXPANDIDO -->
+                        <button onclick="audioManager.toggleCompactPlayer()" id="btn-toggle-yt-compact" class="btn btn-xs btn-ghost text-xs">
+                            <i class="fa-solid fa-compress mr-1"></i> Compacto
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <input id="yt-url-input" type="text" placeholder="Cole a URL ou ID (ex: youtu.be/...)" class="input input-bordered input-sm flex-1 rounded-xl text-xs" />
+                        <button onclick="audioManager.loadYouTubeFromInput()" class="btn btn-sm btn-primary rounded-xl text-xs">
+                            Carregar
+                        </button>
+                    </div>
+
+                    <!-- PRESETS RECOMENDADOS DE FOCO (COMPATÍVEIS COM EMBED) -->
+                    <div class="bg-base-200/60 p-2.5 rounded-2xl">
+                        <span class="text-[11px] font-bold block mb-1.5 opacity-70"><i class="fa-solid fa-bolt text-warning mr-1"></i> Presets Recomendados (Sem restrições)</span>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button onclick="audioManager.loadPresetYouTube('jfKfPfyJRdk', 'Lofi Girl 24/7')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
+                                🎧 Lofi Girl Chill
+                            </button>
+                            <button onclick="audioManager.loadPresetYouTube('5qap5aO4i9A', 'Lofi Hip Hop Synth')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
+                                🌌 Lofi Synthwave
+                            </button>
+                            <button onclick="audioManager.loadPresetYouTube('mPZkdNFkNps', 'Ambient Rain Lofi')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
+                                🌧️ Rain Lofi Chill
+                            </button>
+                            <button onclick="audioManager.loadPresetYouTube('DWcJFNfaw9c', 'Coffee Shop Jazz')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
+                                ☕ Coffee Shop Jazz
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CONTAINER DO IFRAME COM FALLBACK E NAVEGAÇÃO -->
+                    <div id="yt-player-container" class="relative w-full aspect-video rounded-2xl overflow-hidden bg-black/80 border border-base-300 shadow-inner flex flex-col items-center justify-center transition-all duration-300">
+                        <iframe id="yt-iframe" class="w-full h-full" src="" title="YouTube audio player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        
+                        <div id="yt-placeholder-text" class="absolute inset-0 flex flex-col items-center justify-center text-center p-4 text-xs opacity-60 bg-base-300 pointer-events-none">
+                            <i class="fa-brands fa-youtube text-3xl mb-1 text-error opacity-80"></i>
+                            <p>Insira um link do YouTube ou selecione um preset acima.</p>
+                        </div>
+                    </div>
+
+                    <!-- BANNER DE FALLBACK / EMBED RESTRICTED WARN (ERRO 153 OR EMBED BLOCKED) -->
+                    <div id="yt-fallback-banner" class="hidden p-3 bg-warning/15 border border-warning/30 rounded-2xl text-xs flex flex-col gap-2">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-warning text-sm mt-0.5"></i>
+                            <div class="flex-1 text-[11px]">
+                                <strong>Bloqueio de Incorporação Detectado:</strong> Este vídeo pode restringir a reprodução em iframes/ambientes locais.
+                            </div>
+                        </div>
+                        <a id="yt-external-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-warning w-full rounded-xl flex items-center justify-center gap-1.5 text-warning-content font-bold">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir no YouTube (Nova Aba)
+                        </a>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <button onclick="audioManager.clearYouTubePlayer()" class="btn btn-xs btn-ghost text-xs text-error">
+                            <i class="fa-solid fa-trash mr-1"></i> Limpar Player
+                        </button>
+                    </div>
+
+                    <!-- CONTROLES DE NAVEGAÇÃO DA PLAYLIST -->
+                    <div class="flex items-center justify-between bg-base-200/80 p-2.5 rounded-2xl text-xs">
+                        <button onclick="audioManager.prevPlaylistTrack()" class="btn btn-xs btn-ghost rounded-xl flex items-center gap-1" title="Faixa Anterior">
+                            <i class="fa-solid fa-backward-step"></i> Anterior
+                        </button>
+                        <span id="yt-current-track-title" class="font-bold text-center truncate max-w-[170px] opacity-80 text-[11px]">
+                            Nenhuma faixa ativa
+                        </span>
+                        <button onclick="audioManager.nextPlaylistTrack()" class="btn btn-xs btn-ghost rounded-xl flex items-center gap-1" title="Próxima Faixa">
+                            Próxima <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ABA 3: PLAYLIST MANAGER -->
+                <div id="audio-panel-playlist" class="audio-tab-panel hidden space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="label text-xs font-extrabold uppercase tracking-wider text-base-content/70">Listas Salvas</label>
+                        <button onclick="audioManager.promptNewPlaylist()" class="btn btn-xs btn-primary rounded-lg">
+                            <i class="fa-solid fa-plus mr-1"></i> Adicionar Faixa
+                        </button>
+                    </div>
+
+                    <div id="playlist-container" class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1">
+                        <!-- Playlists salvas serão renderizadas aqui -->
+                    </div>
+                </div>
+
+                <!-- SELETOR DE ALARME DE FINALIZAÇÃO -->
+                <div class="my-5 border-t border-base-200 pt-4">
+                    <label class="label text-xs font-extrabold uppercase tracking-wider text-base-content/70">Alarme de Término de Bloco</label>
+                    <div class="flex gap-2 mt-1">
+                        <select id="select-alarm-sound" onchange="audioManager.setAlarmSound(this.value)" class="select select-bordered select-sm flex-1 rounded-xl text-xs">
+                            <option value="bell">Sino Suave</option>
+                            <option value="quest">Fanfarra Quest</option>
+                            <option value="bird">Trinado de Pássaro</option>
+                            <option value="alarm">Alarme Digital</option>
+                            <option value="warning">Aviso Sonoro</option>
+                            <option value="whistle">Apito Sintético</option>
+                            <option value="siren">Sirene Foco</option>
+                        </select>
+                        <button onclick="audioManager.playSelectedAlarmPreview()" class="btn btn-sm btn-secondary rounded-xl" title="Testar Som">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- COMPORTAMENTO DE REPRODUÇÃO AVANÇADO -->
+                <div class="space-y-3 bg-base-200/50 p-4 rounded-2xl">
+                    <span class="text-xs font-bold text-base-content/80 block mb-1">Comportamento Avançado</span>
+                    
+                    <label class="label cursor-pointer p-0">
+                        <span class="label-text text-xs">Tocar alarme mesmo se mutado</span>
+                        <input id="chk-alarm-ignore-mute" type="checkbox" onchange="audioManager.toggleAlarmIgnoreMute(this.checked)" class="toggle toggle-xs toggle-primary" checked />
+                    </label>
+
+                    <label class="label cursor-pointer p-0">
+                        <span class="label-text text-xs">Parar fundo ao pausar/resetar</span>
+                        <input id="chk-auto-pause-ambient" type="checkbox" onchange="audioManager.toggleAutoPauseAmbient(this.checked)" class="toggle toggle-xs toggle-primary" checked />
+                    </label>
+
+                    <label class="label cursor-pointer p-0">
+                        <span class="label-text text-xs">Reiniciar música ao resetar cronômetro</span>
+                        <input id="chk-restart-on-reset" type="checkbox" onchange="audioManager.toggleRestartOnReset(this.checked)" class="toggle toggle-xs toggle-primary" />
+                    </label>
+
+                    <label class="label cursor-pointer p-0">
+                        <span class="label-text text-xs">Reiniciar música ao mudar de modo (Foco/Pausa)</span>
+                        <input id="chk-restart-on-mode-change" type="checkbox" onchange="audioManager.toggleRestartOnModeChange(this.checked)" class="toggle toggle-xs toggle-primary" />
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center text-xs opacity-50">
+                Sintetizador & Audio Player Integrados
+            </div>
+        </div>
+    </div>
+
+    <!-- ESTILOS AUXILIARES PARA DRAWER NATIVO -->
+    <style>
+        #drawer_audio.drawer-open .drawer-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #drawer_audio.drawer-open .drawer-content-panel {
+            transform: translateX(0);
+        }
+    </style>
+
+    <!-- RODAPÉ -->
+    <footer class="w-full max-w-5xl mx-auto px-4 py-4 text-center text-xs opacity-60">
+        Pomodoro Flow &copy; 2026 — Produtividade Livre de Distrações.
+    </footer>
+
+    <!-- MODAL DE CONFIGURAÇÕES DE TEMPOS E TEMAS -->
+    <dialog id="modal_settings" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box bg-base-100 rounded-3xl p-6 sm:p-8">
+            <h3 class="font-bold text-xl mb-6 flex items-center gap-2">
+                <i class="fa-solid fa-gear text-primary"></i> Configurações do Flow
+            </h3>
+
+            <div class="space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Tempo de Foco (minutos)</span>
+                    </label>
+                    <input id="setting-focus" type="number" min="1" max="120" value="25" class="input input-bordered w-full rounded-xl" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Pausa Curta (min)</span>
+                        </label>
+                        <input id="setting-short" type="number" min="1" max="60" value="5" class="input input-bordered w-full rounded-xl" />
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Pausa Longa (min)</span>
+                        </label>
+                        <input id="setting-long" type="number" min="1" max="60" value="15" class="input input-bordered w-full rounded-xl" />
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Intervalo para Pausa Longa</span>
+                    </label>
+                    <input id="setting-interval" type="number" min="1" max="12" value="4" class="input input-bordered w-full rounded-xl" />
+                </div>
+
+                <div class="form-control pt-2">
+                    <label class="label">
+                        <span class="label-text font-semibold">Tema Visual</span>
+                    </label>
+                    <select id="setting-theme" onchange="pomodoroApp.changeTheme(this.value)" class="select select-bordered w-full rounded-xl">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="emerald">Emerald</option>
+                        <option value="corporate">Corporate</option>
+                        <option value="synthwave">Synthwave</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="coffee">Coffee</option>
+                        <option value="night">Night</option>
+                        <option value="pastel">Pastel</option>
+                        <option value="luxury">Luxury</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-action mt-8">
+                <form method="dialog" class="flex gap-2 w-full">
+                    <button class="btn btn-ghost flex-1 rounded-xl">Cancelar</button>
+                    <button type="button" onclick="pomodoroApp.saveSettings()" class="btn btn-primary flex-1 rounded-xl">Salvar Alterações</button>
+                </form>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- SCRIPTS DA APLICAÇÃO (MÓDULOS DE ÁUDIO, TAREFAS E TEMPORIZADOR) -->
+    <script>
+        /**
+         * 1. MÓDULO DE SINTETIZADOR DE ÁUDIO, YOUTUBE & ALARMES (Web Audio API + Iframe)
+         */
+        const audioManager = {
+            ctx: null,
+            masterGain: null,
+            ambientGain: null,
+            isMuted: false,
+            masterVolume: 0.7,
+            currentAmbientTrack: 'none',
+            selectedAlarm: 'bell',
+            ignoreMuteForAlarm: true,
+            autoPauseAmbient: true,
+            restartOnReset: false,
+            restartOnModeChange: false,
+            activeSourceTab: 'local',
+            youtubeVideoId: '',
+            playlists: [],
+            currentTrackIndex: -1,
+            ambientNode: null,
+            isCompactPlayer: false,
+
+            init() {
+                // Carregar configurações de áudio do localStorage
+                const savedAudio = localStorage.getItem('pf_audio_config');
+                if (savedAudio) {
+                    try {
+                        const cfg = JSON.parse(savedAudio);
+                        this.masterVolume = cfg.volume ?? 0.7;
+                        this.isMuted = cfg.isMuted ?? false;
+                        this.selectedAlarm = cfg.selectedAlarm ?? 'bell';
+                        this.ignoreMuteForAlarm = cfg.ignoreMuteForAlarm ?? true;
+                        this.autoPauseAmbient = cfg.autoPauseAmbient ?? true;
+                        this.restartOnReset = cfg.restartOnReset ?? false;
+                        this.restartOnModeChange = cfg.restartOnModeChange ?? false;
+                        this.youtubeVideoId = cfg.youtubeVideoId ?? '';
+                        this.activeSourceTab = cfg.activeSourceTab ?? 'local';
+                        this.currentTrackIndex = cfg.currentTrackIndex ?? -1;
+                        this.isCompactPlayer = cfg.isCompactPlayer ?? false;
+                    } catch (e) {
+                        console.error('Erro ao ler áudio salvos:', e);
+                    }
+                }
+
+                // Carregar Playlists com chave dedicada
+                const savedPlaylists = localStorage.getItem('pf_yt_playlist');
+                if (savedPlaylists) {
+                    try {
+                        this.playlists = JSON.parse(savedPlaylists);
+                    } catch (e) {
+                        this.playlists = [];
+                    }
+                } else {
+                    // Playlists Padrão Freemium
+                    this.playlists = [
+                        { id: 'pl_1', title: 'Deep Focus Lofi 24/7', url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk', videoId: 'jfKfPfyJRdk' },
+                        { id: 'pl_2', title: 'Ambient Rain & Chill', url: 'https://www.youtube.com/watch?v=mPZkdNFkNps', videoId: 'mPZkdNFkNps' }
+                    ];
+                    this.savePlaylists();
+                }
+
+                // Atualizar DOM do painel de áudio
+                const volInput = document.getElementById('input-volume');
+                if (volInput) volInput.value = Math.round(this.masterVolume * 100);
+                
+                const alarmSelect = document.getElementById('select-alarm-sound');
+                if (alarmSelect) alarmSelect.value = this.selectedAlarm;
+
+                const chkIgnore = document.getElementById('chk-alarm-ignore-mute');
+                if (chkIgnore) chkIgnore.checked = this.ignoreMuteForAlarm;
+
+                const chkAutoPause = document.getElementById('chk-auto-pause-ambient');
+                if (chkAutoPause) chkAutoPause.checked = this.autoPauseAmbient;
+
+                const chkRestartReset = document.getElementById('chk-restart-on-reset');
+                if (chkRestartReset) chkRestartReset.checked = this.restartOnReset;
+
+                const chkRestartMode = document.getElementById('chk-restart-on-mode-change');
+                if (chkRestartMode) chkRestartMode.checked = this.restartOnModeChange;
+
+                this.updateVolumeDisplay();
+                this.updateAmbientButtonsUI();
+                this.switchSourceTab(this.activeSourceTab);
+
+                if (this.youtubeVideoId) {
+                    this.setYouTubePlayer(this.youtubeVideoId, false);
+                }
+                this.applyCompactPlayerUI();
+                this.renderPlaylists();
+                this.updateTrackTitleUI();
+            },
+
+            // Navegação de Abas do Painel de Áudio
+            switchSourceTab(tabKey) {
+                this.activeSourceTab = tabKey;
+                
+                ['local', 'youtube', 'playlist'].forEach(t => {
+                    const btn = document.getElementById(`audio-tab-${t}`);
+                    const panel = document.getElementById(`audio-panel-${t}`);
+                    if (t === tabKey) {
+                        if (btn) btn.classList.add('tab-active', 'bg-primary', 'text-primary-content');
+                        if (panel) panel.classList.remove('hidden');
+                    } else {
+                        if (btn) btn.classList.remove('tab-active', 'bg-primary', 'text-primary-content');
+                        if (panel) panel.classList.add('hidden');
+                    }
+                });
+
+                this.saveState();
+            },
+
+            // PARSER INTELIGENTE DE ID DO YOUTUBE
+            extractYouTubeId(input) {
+                if (!input) return null;
+                const cleanInput = input.trim();
+                
+                // Trata formato de ID direto de 11 caracteres alfanuméricos
+                if (/^[a-zA-Z0-9_-]{11}$/.test(cleanInput)) {
+                    return cleanInput;
+                }
+
+                // Regex para capturar IDs em watch?v=, youtu.be/, embed/, v/, shorts/ e remoção de parâmetros de rastreamento (?si=, &t=, etc.)
+                const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+                const match = cleanInput.match(regExp);
+
+                return (match && match[1]) ? match[1] : null;
+            },
+
+            loadYouTubeFromInput() {
+                const inputEl = document.getElementById('yt-url-input');
+                const rawVal = inputEl.value;
+                const videoId = this.extractYouTubeId(rawVal);
+                
+                if (videoId) {
+                    this.currentTrackIndex = -1;
+                    this.setYouTubePlayer(videoId, true);
+                    inputEl.value = '';
+                } else {
+                    alert('URL ou ID do YouTube inválido. Certifique-se de colar um link válido.');
+                }
+            },
+
+            loadPresetYouTube(videoId, title = null) {
+                this.currentTrackIndex = -1;
+                this.setYouTubePlayer(videoId, true, title);
+            },
+
+            setYouTubePlayer(videoId, autoPlay = false, titleOverride = null) {
+                this.youtubeVideoId = videoId;
+                const iframe = document.getElementById('yt-iframe');
+                const placeholder = document.getElementById('yt-placeholder-text');
+                const fallbackBanner = document.getElementById('yt-fallback-banner');
+                const externalLink = document.getElementById('yt-external-link');
+                
+                if (iframe && videoId) {
+                    // Sanitização da URL estrita com suporte a origin
+                    const originParam = window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=${autoPlay ? 1 : 0}${originParam}`;
+                    
+                    if (placeholder) placeholder.classList.add('hidden');
+                    if (fallbackBanner) fallbackBanner.classList.remove('hidden');
+                    if (externalLink) externalLink.href = `https://www.youtube.com/watch?v=${videoId}`;
+                    
+                    // Desativa ruídos sintetizados para evitar sobreposição
+                    if (autoPlay && this.currentAmbientTrack !== 'none') {
+                        this.setAmbientTrack('none');
+                    }
+                }
+                
+                this.updateTrackTitleUI(titleOverride);
+                this.saveState();
+            },
+
+            clearYouTubePlayer() {
+                this.youtubeVideoId = '';
+                this.currentTrackIndex = -1;
+                const iframe = document.getElementById('yt-iframe');
+                const placeholder = document.getElementById('yt-placeholder-text');
+                const fallbackBanner = document.getElementById('yt-fallback-banner');
+                
+                if (iframe) iframe.src = '';
+                if (placeholder) placeholder.classList.remove('hidden');
+                if (fallbackBanner) fallbackBanner.classList.add('hidden');
+                
+                this.updateTrackTitleUI();
+                this.saveState();
+            },
+
+            // TOGGLE DO PLAYER COMPACTO / EXPANDIDO
+            toggleCompactPlayer() {
+                this.isCompactPlayer = !this.isCompactPlayer;
+                this.applyCompactPlayerUI();
+                this.saveState();
+            },
+
+            applyCompactPlayerUI() {
+                const container = document.getElementById('yt-player-container');
+                const btnToggle = document.getElementById('btn-toggle-yt-compact');
+                
+                if (!container || !btnToggle) return;
+
+                if (this.isCompactPlayer) {
+                    container.classList.remove('aspect-video');
+                    container.classList.add('h-24');
+                    btnToggle.innerHTML = '<i class="fa-solid fa-expand mr-1"></i> Expandir';
+                } else {
+                    container.classList.remove('h-24');
+                    container.classList.add('aspect-video');
+                    btnToggle.innerHTML = '<i class="fa-solid fa-compress mr-1"></i> Compacto';
+                }
+            },
+
+            // NAVEGAÇÃO DE FAIXAS DA PLAYLIST (ANTERIOR / PRÓXIMA)
+            nextPlaylistTrack() {
+                if (this.playlists.length === 0) return;
+                
+                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlists.length;
+                const track = this.playlists[this.currentTrackIndex];
+                if (track && track.videoId) {
+                    this.setYouTubePlayer(track.videoId, true, track.title);
+                }
+            },
+
+            prevPlaylistTrack() {
+                if (this.playlists.length === 0) return;
+
+                this.currentTrackIndex = (this.currentTrackIndex - 1 + this.playlists.length) % this.playlists.length;
+                const track = this.playlists[this.currentTrackIndex];
+                if (track && track.videoId) {
+                    this.setYouTubePlayer(track.videoId, true, track.title);
+                }
+            },
+
+            updateTrackTitleUI(titleOverride = null) {
+                const titleEl = document.getElementById('yt-current-track-title');
+                if (!titleEl) return;
+
+                if (titleOverride) {
+                    titleEl.textContent = titleOverride;
+                } else if (this.currentTrackIndex >= 0 && this.playlists[this.currentTrackIndex]) {
+                    titleEl.textContent = this.playlists[this.currentTrackIndex].title;
+                } else if (this.youtubeVideoId) {
+                    titleEl.textContent = `Vídeo: ${this.youtubeVideoId}`;
+                } else {
+                    titleEl.textContent = 'Nenhuma faixa ativa';
+                }
+            },
+
+            // Controle de Playlists Locais com persistência em pf_yt_playlist
+            renderPlaylists() {
+                const container = document.getElementById('playlist-container');
+                if (!container) return;
+
+                container.innerHTML = '';
+                if (this.playlists.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-center opacity-50 py-4">Nenhuma playlist salva.</p>';
+                    return;
+                }
+
+                this.playlists.forEach((pl, idx) => {
+                    const isPlaying = this.currentTrackIndex === idx;
+                    const item = document.createElement('div');
+                    item.className = `flex items-center justify-between p-2 rounded-xl transition-all text-xs border ${
+                        isPlaying ? 'bg-primary/20 border-primary' : 'bg-base-200/60 hover:bg-base-200 border-base-200'
+                    }`;
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2 overflow-hidden flex-1">
+                            <i class="fa-brands fa-youtube text-error"></i>
+                            <span class="font-semibold truncate ${isPlaying ? 'text-primary' : ''}">${pl.title}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="audioManager.playPlaylistIndex(${idx})" class="btn btn-xs ${isPlaying ? 'btn-primary' : 'btn-ghost'} rounded-lg" title="Tocar">
+                                <i class="fa-solid fa-play"></i>
+                            </button>
+                            <button onclick="audioManager.deletePlaylist('${pl.id}')" class="btn btn-xs btn-ghost text-error rounded-lg" title="Excluir">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            },
+
+            promptNewPlaylist() {
+                const url = prompt('Cole a URL ou ID do vídeo do YouTube:');
+                if (!url) return;
+
+                const videoId = this.extractYouTubeId(url);
+                if (!videoId) {
+                    alert('Link ou ID do YouTube inválido.');
+                    return;
+                }
+
+                let title = prompt('Nome para a faixa (opcional):');
+                if (!title || !title.trim()) {
+                    title = `Faixa (${videoId})`;
+                }
+
+                this.playlists.push({
+                    id: 'pl_' + Date.now(),
+                    title: title.trim(),
+                    url: url.trim(),
+                    videoId
+                });
+                
+                this.savePlaylists();
+                this.renderPlaylists();
+            },
+
+            playPlaylistIndex(idx) {
+                if (idx >= 0 && idx < this.playlists.length) {
+                    this.currentTrackIndex = idx;
+                    const pl = this.playlists[idx];
+                    this.switchSourceTab('youtube');
+                    this.setYouTubePlayer(pl.videoId, true, pl.title);
+                    this.renderPlaylists();
+                }
+            },
+
+            deletePlaylist(id) {
+                this.playlists = this.playlists.filter(p => p.id !== id);
+                this.currentTrackIndex = -1;
+                this.savePlaylists();
+                this.renderPlaylists();
+                this.updateTrackTitleUI();
+            },
+
+            savePlaylists() {
+                localStorage.setItem('pf_yt_playlist', JSON.stringify(this.playlists));
+            },
+
+            // Toggles de Comportamento Avançado
+            toggleRestartOnReset(val) {
+                this.restartOnReset = val;
+                this.saveState();
+            },
+
+            toggleRestartOnModeChange(val) {
+                this.restartOnModeChange = val;
+                this.saveState();
+            },
+
+            // Reação aos eventos do temporizador Pomodoro
+            handleTimerReset() {
+                if (this.restartOnReset) {
+                    if (this.currentAmbientTrack !== 'none') {
+                        this.setAmbientTrack(this.currentAmbientTrack);
+                    }
+                    if (this.youtubeVideoId) {
+                        this.setYouTubePlayer(this.youtubeVideoId, true);
+                    }
+                }
+            },
+
+            handleModeChange() {
+                if (this.restartOnModeChange) {
+                    if (this.currentAmbientTrack !== 'none') {
+                        this.setAmbientTrack(this.currentAmbientTrack);
+                    }
+                    if (this.youtubeVideoId) {
+                        this.setYouTubePlayer(this.youtubeVideoId, true);
+                    }
+                }
+            },
+
+            // Garante inicialização no primeiro clique do usuário
+            initAudioContext() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = this.isMuted ? 0 : this.masterVolume;
+                    this.masterGain.connect(this.ctx.destination);
+
+                    this.ambientGain = this.ctx.createGain();
+                    this.ambientGain.gain.value = 0.5;
+                    this.ambientGain.connect(this.masterGain);
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+
+            setMasterVolume(val) {
+                this.masterVolume = parseFloat(val) / 100;
+                this.isMuted = false;
+                if (this.masterGain) {
+                    this.masterGain.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
+                }
+                this.updateVolumeDisplay();
+                this.saveState();
+            },
+
+            toggleMute() {
+                this.initAudioContext();
+                this.isMuted = !this.isMuted;
+                if (this.masterGain) {
+                    this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.masterVolume, this.ctx.currentTime);
+                }
+                this.updateVolumeDisplay();
+                this.saveState();
+            },
+
+            updateVolumeDisplay() {
+                const volVal = document.getElementById('volume-display-val');
+                const muteIcon = document.getElementById('mute-icon');
+                
+                if (volVal) volVal.textContent = this.isMuted ? 'Mutado' : `${Math.round(this.masterVolume * 100)}%`;
+                
+                if (muteIcon) {
+                    if (this.isMuted || this.masterVolume === 0) {
+                        muteIcon.className = 'fa-solid fa-volume-xmark text-error';
+                    } else if (this.masterVolume < 0.4) {
+                        muteIcon.className = 'fa-solid fa-volume-low';
+                    } else {
+                        muteIcon.className = 'fa-solid fa-volume-high';
+                    }
+                }
+            },
+
+            setAmbientTrack(track) {
+                this.initAudioContext();
+                this.currentAmbientTrack = track;
+                this.stopAmbientNoise();
+
+                if (track !== 'none') {
+                    this.startAmbientNoise(track);
+                }
+                this.updateAmbientButtonsUI();
+            },
+
+            updateAmbientButtonsUI() {
+                document.querySelectorAll('.ambient-btn').forEach(btn => {
+                    const track = btn.getAttribute('data-track');
+                    if (track === this.currentAmbientTrack) {
+                        btn.classList.add('btn-primary');
+                        btn.classList.remove('btn-outline');
+                    } else {
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-outline');
+                    }
+                });
+            },
+
+            // Gerador de ruídos ambientais via Web Audio API
+            startAmbientNoise(type) {
+                if (!this.ctx) return;
+
+                const bufferSize = this.ctx.sampleRate * 2;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+
+                let lastOut = 0.0;
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+
+                    if (type === 'rain' || type === 'wind') {
+                        b0 = 0.99886 * b0 + white * 0.0555179;
+                        b1 = 0.99332 * b1 + white * 0.0750759;
+                        b2 = 0.96900 * b2 + white * 0.1538520;
+                        b3 = 0.86650 * b3 + white * 0.3104856;
+                        b4 = 0.55000 * b4 + white * 0.5329522;
+                        b5 = -0.7616 * b5 - white * 0.0168980;
+                        output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                        output[i] *= 0.11;
+                        b6 = white * 0.115926;
+                    } else if (type === 'campfire' || type === 'waves') {
+                        output[i] = (lastOut + (0.02 * white)) / 1.02;
+                        lastOut = output[i];
+                        output[i] *= 3.5;
+                    } else {
+                        output[i] = white * 0.2;
+                    }
+                }
+
+                const whiteNoise = this.ctx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+
+                if (type === 'rain') {
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 1200;
+                } else if (type === 'wind') {
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 400;
+                    filter.Q.value = 3.0;
+                } else if (type === 'waves') {
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 500;
+                } else if (type === 'campfire') {
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 800;
+                    filter.Q.value = 1.0;
+                } else if (type === 'ticking') {
+                    this.startTickingSound();
+                    return;
+                }
+
+                whiteNoise.connect(filter);
+                filter.connect(this.ambientGain);
+                whiteNoise.start();
+                this.ambientNode = whiteNoise;
+            },
+
+            startTickingSound() {
+                const tickInterval = 1000;
+                this.ambientTimerId = setInterval(() => {
+                    if (!this.ctx || this.currentAmbientTrack !== 'ticking') return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.04);
+                    osc.connect(gain);
+                    gain.connect(this.ambientGain);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.05);
+                }, tickInterval);
+            },
+
+            stopAmbientNoise() {
+                if (this.ambientNode) {
+                    try { this.ambientNode.stop(); } catch (e) {}
+                    this.ambientNode = null;
+                }
+                if (this.ambientTimerId) {
+                    clearInterval(this.ambientTimerId);
+                    this.ambientTimerId = null;
+                }
+            },
+
+            setAlarmSound(alarmKey) {
+                this.selectedAlarm = alarmKey;
+                this.saveState();
+            },
+
+            toggleAlarmIgnoreMute(val) {
+                this.ignoreMuteForAlarm = val;
+                this.saveState();
+            },
+
+            toggleAutoPauseAmbient(val) {
+                this.autoPauseAmbient = val;
+                this.saveState();
+            },
+
+            playSelectedAlarmPreview() {
+                this.initAudioContext();
+                this.playAlarm(this.selectedAlarm);
+            },
+
+            // Sintetizador dos 7 Tipos de Alarmes Sonoros
+            playAlarm(alarmType = this.selectedAlarm) {
+                this.initAudioContext();
+
+                let destination = this.masterGain;
+                if (this.ignoreMuteForAlarm && this.isMuted) {
+                    const tempGain = this.ctx.createGain();
+                    tempGain.gain.value = this.masterVolume || 0.7;
+                    tempGain.connect(this.ctx.destination);
+                    destination = tempGain;
+                }
+
+                const now = this.ctx.currentTime;
+
+                const playNote = (freq, start, duration, type = 'sine', vol = 0.3) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, start);
+                    gain.gain.setValueAtTime(vol, start);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+                    osc.connect(gain);
+                    gain.connect(destination);
+                    osc.start(start);
+                    osc.stop(start + duration);
+                };
+
+                switch (alarmType) {
+                    case 'bell':
+                        playNote(523.25, now, 0.8, 'sine', 0.4);
+                        playNote(659.25, now + 0.2, 0.8, 'sine', 0.4);
+                        playNote(783.99, now + 0.4, 1.2, 'sine', 0.5);
+                        break;
+                    case 'quest':
+                        playNote(440, now, 0.15, 'triangle', 0.4);
+                        playNote(554.37, now + 0.15, 0.15, 'triangle', 0.4);
+                        playNote(659.25, now + 0.30, 0.15, 'triangle', 0.4);
+                        playNote(880, now + 0.45, 0.5, 'triangle', 0.5);
+                        break;
+                    case 'bird':
+                        playNote(1500, now, 0.1, 'sine', 0.2);
+                        playNote(2200, now + 0.08, 0.12, 'sine', 0.2);
+                        playNote(1800, now + 0.2, 0.15, 'sine', 0.2);
+                        break;
+                    case 'alarm':
+                        for (let i = 0; i < 4; i++) {
+                            playNote(880, now + (i * 0.15), 0.08, 'square', 0.2);
+                        }
+                        break;
+                    case 'warning':
+                        playNote(400, now, 0.25, 'sawtooth', 0.3);
+                        playNote(300, now + 0.25, 0.35, 'sawtooth', 0.3);
+                        break;
+                    case 'whistle':
+                        playNote(1200, now, 0.15, 'sine', 0.3);
+                        playNote(1600, now + 0.1, 0.25, 'sine', 0.3);
+                        break;
+                    case 'siren':
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(600, now);
+                        osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
+                        osc.frequency.linearRampToValueAtTime(600, now + 0.6);
+                        gain.gain.setValueAtTime(0.3, now);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+                        osc.connect(gain);
+                        gain.connect(destination);
+                        osc.start(now);
+                        osc.stop(now + 0.7);
+                        break;
+                    default:
+                        playNote(523.25, now, 0.5);
+                }
+            },
+
+            saveState() {
+                localStorage.setItem('pf_audio_config', JSON.stringify({
+                    volume: this.masterVolume,
+                    isMuted: this.isMuted,
+                    selectedAlarm: this.selectedAlarm,
+                    ignoreMuteForAlarm: this.ignoreMuteForAlarm,
+                    autoPauseAmbient: this.autoPauseAmbient,
+                    restartOnReset: this.restartOnReset,
+                    restartOnModeChange: this.restartOnModeChange,
+                    activeSourceTab: this.activeSourceTab,
+                    youtubeVideoId: this.youtubeVideoId,
+                    currentTrackIndex: this.currentTrackIndex,
+                    isCompactPlayer: this.isCompactPlayer
+                }));
+            }
+        };
+
+        /**
+         * 2. MÓDULO GERENCIADOR DE TAREFAS (Task Manager com Drag-and-Drop Nativo)
+         */
+        const taskManager = {
+            tasks: [],
+            activeTaskId: null,
+            draggedItemIndex: null,
+
+            init() {
+                const stored = localStorage.getItem('pf_tasks');
+                if (stored) {
+                    try {
+                        this.tasks = JSON.parse(stored);
+                    } catch (e) {
+                        console.error('Erro ao ler tarefas:', e);
+                    }
+                }
+                const activeId = localStorage.getItem('pf_active_task_id');
+                if (activeId) this.activeTaskId = activeId;
+
+                this.render();
+            },
+
+            save() {
+                localStorage.setItem('pf_tasks', JSON.stringify(this.tasks));
+                if (this.activeTaskId) {
+                    localStorage.setItem('pf_active_task_id', this.activeTaskId);
+                } else {
+                    localStorage.removeItem('pf_active_task_id');
+                }
+                this.render();
+            },
+
+            handleAddTask(e) {
+                e.preventDefault();
+                const titleInput = document.getElementById('input-task-title');
+                const estInput = document.getElementById('input-task-est');
+
+                const title = titleInput.value.trim();
+                const est = parseInt(estInput.value) || 1;
+
+                if (!title) return;
+
+                const newTask = {
+                    id: 'task_' + Date.now(),
+                    title,
+                    estPomodoros: Math.max(1, est),
+                    actPomodoros: 0,
+                    completed: false,
+                    createdAt: Date.now()
+                };
+
+                this.tasks.push(newTask);
+                titleInput.value = '';
+                estInput.value = '1';
+
+                // Se for a primeira tarefa, define automaticamente como ativa
+                if (this.tasks.length === 1) {
+                    this.setActiveTask(newTask.id);
+                } else {
+                    this.save();
+                }
+            },
+
+            toggleTaskComplete(id) {
+                const task = this.tasks.find(t => t.id === id);
+                if (task) {
+                    task.completed = !task.completed;
+                    if (task.completed && this.activeTaskId === id) {
+                        this.activeTaskId = null;
+                    }
+                    this.save();
+                }
+            },
+
+            deleteTask(id) {
+                this.tasks = this.tasks.filter(t => t.id !== id);
+                if (this.activeTaskId === id) {
+                    this.activeTaskId = null;
+                }
+                this.save();
+            },
+
+            setActiveTask(id) {
+                this.activeTaskId = (this.activeTaskId === id) ? null : id;
+                this.save();
+            },
+
+            clearActiveTask() {
+                this.activeTaskId = null;
+                this.save();
+            },
+
+            incrementActiveTaskPomodoro() {
+                if (!this.activeTaskId) return;
+                const task = this.tasks.find(t => t.id === this.activeTaskId);
+                if (task) {
+                    task.actPomodoros++;
+                    this.save();
+                }
+            },
+
+            editTaskTitle(id, newTitle) {
+                const task = this.tasks.find(t => t.id === id);
+                if (task && newTitle.trim()) {
+                    task.title = newTitle.trim();
+                    this.save();
+                }
+            },
+
+            // Drag and Drop Logic Nativo HTML5
+            handleDragStart(e, index) {
+                this.draggedItemIndex = index;
+                e.currentTarget.classList.add('task-dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            },
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            },
+
+            handleDrop(e, targetIndex) {
+                e.preventDefault();
+                if (this.draggedItemIndex === null || this.draggedItemIndex === targetIndex) return;
+
+                const movedTask = this.tasks.splice(this.draggedItemIndex, 1)[0];
+                this.tasks.splice(targetIndex, 0, movedTask);
+                this.draggedItemIndex = null;
+                this.save();
+            },
+
+            handleDragEnd(e) {
+                e.currentTarget.classList.remove('task-dragging');
+                this.draggedItemIndex = null;
+            },
+
+            render() {
+                const listContainer = document.getElementById('task-list');
+                const emptyState = document.getElementById('empty-task-state');
+                const statsEl = document.getElementById('task-stats');
+                const activeBanner = document.getElementById('active-task-banner');
+                const activeTitleEl = document.getElementById('active-task-title');
+
+                listContainer.innerHTML = '';
+
+                const completedCount = this.tasks.filter(t => t.completed).length;
+                statsEl.textContent = `${completedCount} / ${this.tasks.length} concluídas`;
+
+                if (this.tasks.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                }
+
+                // Renderiza Banner da Tarefa Ativa no Timer
+                const activeTask = this.tasks.find(t => t.id === this.activeTaskId);
+                if (activeTask && !activeTask.completed) {
+                    activeTitleEl.textContent = `${activeTask.title} (${activeTask.actPomodoros}/${activeTask.estPomodoros})`;
+                    activeBanner.classList.remove('hidden');
+                } else {
+                    activeBanner.classList.add('hidden');
+                }
+
+                // Renderiza Lista
+                this.tasks.forEach((task, index) => {
+                    const isActive = task.id === this.activeTaskId;
+                    
+                    const item = document.createElement('div');
+                    item.draggable = true;
+                    item.className = `p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-2 bg-base-200/40 hover:bg-base-200 cursor-grab ${
+                        isActive ? 'border-primary ring-1 ring-primary' : 'border-base-200'
+                    } ${task.completed ? 'opacity-50' : ''}`;
+
+                    // Listeners de arrastar
+                    item.addEventListener('dragstart', (e) => this.handleDragStart(e, index));
+                    item.addEventListener('dragover', (e) => this.handleDragOver(e));
+                    item.addEventListener('drop', (e) => this.handleDrop(e, index));
+                    item.addEventListener('dragend', (e) => this.handleDragEnd(e));
+
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                            <i class="fa-solid fa-grip-vertical text-base-content/30 text-xs"></i>
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="taskManager.toggleTaskComplete('${task.id}')" class="checkbox checkbox-sm checkbox-primary rounded-lg" />
+                            
+                            <div class="flex-1 overflow-hidden">
+                                <p class="text-sm font-semibold truncate ${task.completed ? 'line-through opacity-70' : ''}" title="Clique duas vezes para editar" odblclick="taskManager.promptEditTitle('${task.id}', '${task.title}')">
+                                    ${task.title}
+                                </p>
+                                <div class="flex items-center gap-2 text-[10px] text-base-content/60 mt-0.5">
+                                    <span><i class="fa-solid fa-fire text-primary mr-0.5"></i> ${task.actPomodoros} / ${task.estPomodoros} poms</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1">
+                            <button onclick="taskManager.setActiveTask('${task.id}')" class="btn btn-xs ${isActive ? 'btn-primary' : 'btn-ghost'} btn-circle" title="${isActive ? 'Desativar de Foco' : 'Definir como Foco Principal'}">
+                                <i class="fa-solid fa-bullseye"></i>
+                            </button>
+                            <button onclick="taskManager.deleteTask('${task.id}')" class="btn btn-xs btn-ghost btn-circle text-error/70 hover:text-error" title="Excluir">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    listContainer.appendChild(item);
+                });
+            },
+
+            promptEditTitle(id, oldTitle) {
+                const newTitle = prompt('Editar nome da tarefa:', oldTitle);
+                if (newTitle !== null) {
+                    this.editTaskTitle(id, newTitle);
+                }
+            }
+        };
+
+        /**
+         * 3. MOTOR CENTRAL DA APLICAÇÃO (Pomodoro Core Timer)
+         */
+        const pomodoroApp = {
+            config: {
+                focus: 25,
+                shortBreak: 5,
+                longBreak: 15,
+                longBreakInterval: 4,
+                theme: 'dark'
+            },
+            
+            state: {
+                currentMode: 'focus',
+                isRunning: false,
+                timeLeft: 25 * 60,
+                totalDuration: 25 * 60,
+                completedCycles: 0,
+                timerId: null,
+                targetEndTime: null
+            },
+
+            dom: {},
+
+            init() {
+                this.cacheDom();
+                this.loadStoredConfig();
+                this.applyTheme(this.config.theme);
+                this.resetTimer();
+                this.updateUI();
+
+                // Inicializar Módulos Filhos
+                audioManager.init();
+                taskManager.init();
+            },
+
+            cacheDom() {
+                this.dom.timerText = document.getElementById('timer-text');
+                this.dom.modeBadge = document.getElementById('mode-badge');
+                this.dom.btnToggle = document.getElementById('btn-toggle');
+                this.dom.btnToggleText = document.getElementById('btn-toggle-text');
+                this.dom.btnToggleIcon = document.getElementById('btn-toggle-icon');
+                this.dom.cycleCount = document.getElementById('cycle-count');
+                this.dom.nextLongBreakCount = document.getElementById('next-long-break-count');
+                this.dom.progressRing = document.getElementById('progress-ring');
+                
+                this.dom.tabs = {
+                    focus: document.getElementById('tab-focus'),
+                    shortBreak: document.getElementById('tab-shortBreak'),
+                    longBreak: document.getElementById('tab-longBreak')
+                };
+
+                this.dom.inputs = {
+                    focus: document.getElementById('setting-focus'),
+                    shortBreak: document.getElementById('setting-short'),
+                    longBreak: document.getElementById('setting-long'),
+                    interval: document.getElementById('setting-interval'),
+                    theme: document.getElementById('setting-theme')
+                };
+            },
+
+            loadStoredConfig() {
+                const storedTheme = localStorage.getItem('pf_theme');
+                if (storedTheme) this.config.theme = storedTheme;
+
+                const storedConfig = localStorage.getItem('pf_settings');
+                if (storedConfig) {
+                    try {
+                        const parsed = JSON.parse(storedConfig);
+                        this.config = { ...this.config, ...parsed };
+                    } catch (e) {
+                        console.error('Erro ao ler configurações:', e);
+                    }
+                }
+
+                this.dom.inputs.focus.value = this.config.focus;
+                this.dom.inputs.shortBreak.value = this.config.shortBreak;
+                this.dom.inputs.longBreak.value = this.config.longBreak;
+                this.dom.inputs.interval.value = this.config.longBreakInterval;
+                this.dom.inputs.theme.value = this.config.theme;
+            },
+
+            changeTheme(themeName) {
+                this.config.theme = themeName;
+                this.applyTheme(themeName);
+                localStorage.setItem('pf_theme', themeName);
+            },
+
+            applyTheme(themeName) {
+                document.documentElement.setAttribute('data-theme', themeName);
+            },
+
+            switchMode(mode) {
+                if (this.state.isRunning) {
+                    this.pauseTimer();
+                }
+
+                this.state.currentMode = mode;
+                const minutes = this.config[mode];
+                this.state.totalDuration = minutes * 60;
+                this.state.timeLeft = this.state.totalDuration;
+
+                audioManager.handleModeChange();
+                this.updateUI();
+            },
+
+            toggleTimer() {
+                if (this.state.isRunning) {
+                    this.pauseTimer();
+                } else {
+                    this.startTimer();
+                }
+            },
+
+            startTimer() {
+                if (this.state.isRunning) return;
+
+                audioManager.initAudioContext();
+                
+                // Se houver ruído de fundo configurado, toca ao iniciar
+                if (audioManager.currentAmbientTrack !== 'none') {
+                    audioManager.setAmbientTrack(audioManager.currentAmbientTrack);
+                }
+
+                this.state.isRunning = true;
+                this.state.targetEndTime = Date.now() + (this.state.timeLeft * 1000);
+
+                this.state.timerId = setInterval(() => {
+                    const now = Date.now();
+                    const secondsRemaining = Math.max(0, Math.round((this.state.targetEndTime - now) / 1000));
+
+                    this.state.timeLeft = secondsRemaining;
+                    this.updateUI();
+
+                    if (secondsRemaining <= 0) {
+                        this.handleTimerComplete();
+                    }
+                }, 250);
+
+                this.updateControlsUI();
+            },
+
+            pauseTimer() {
+                if (!this.state.isRunning) return;
+
+                this.state.isRunning = false;
+                if (this.state.timerId) {
+                    clearInterval(this.state.timerId);
+                    this.state.timerId = null;
+                }
+
+                // Pausar som de fundo se configurado nas opções avançadas
+                if (audioManager.autoPauseAmbient) {
+                    audioManager.stopAmbientNoise();
+                }
+
+                this.updateControlsUI();
+            },
+
+            resetTimer() {
+                this.pauseTimer();
+                this.state.totalDuration = this.config[this.state.currentMode] * 60;
+                this.state.timeLeft = this.state.totalDuration;
+                audioManager.handleTimerReset();
+                this.updateUI();
+            },
+
+            skipMode() {
+                this.pauseTimer();
+                this.advanceToNextMode();
+            },
+
+            handleTimerComplete() {
+                this.pauseTimer();
+                
+                // Disparar Alarme Sonoro Sintetizado
+                audioManager.playAlarm();
+
+                if (this.state.currentMode === 'focus') {
+                    this.state.completedCycles++;
+                    taskManager.incrementActiveTaskPomodoro();
+                    this.advanceToNextMode();
+                } else {
+                    this.switchMode('focus');
+                }
+            },
+
+            advanceToNextMode() {
+                if (this.state.currentMode === 'focus') {
+                    if (this.state.completedCycles % this.config.longBreakInterval === 0) {
+                        this.switchMode('longBreak');
+                    } else {
+                        this.switchMode('shortBreak');
+                    }
+                } else {
+                    this.switchMode('focus');
+                }
+            },
+
+            updateUI() {
+                const minutes = Math.floor(this.state.timeLeft / 60);
+                const seconds = this.state.timeLeft % 60;
+                const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+                this.dom.timerText.textContent = formattedTime;
+                
+                const modeLabels = {
+                    focus: 'Foco',
+                    shortBreak: 'Pausa Curta',
+                    longBreak: 'Pausa Longa'
+                };
+                const currentLabel = modeLabels[this.state.currentMode];
+                document.title = `${formattedTime} - ${currentLabel} | Pomodoro Flow`;
+                this.dom.modeBadge.textContent = currentLabel;
+
+                // Anel SVG de progresso
+                const maxOffset = 276.46;
+                const progressRatio = this.state.totalDuration > 0 ? this.state.timeLeft / this.state.totalDuration : 0;
+                const strokeOffset = maxOffset * (1 - progressRatio);
+                this.dom.progressRing.style.strokeDashoffset = strokeOffset;
+
+                // Tabs Ativas
+                Object.keys(this.dom.tabs).forEach(mode => {
+                    if (mode === this.state.currentMode) {
+                        this.dom.tabs[mode].classList.add('tab-active', 'bg-primary', 'text-primary-content');
+                    } else {
+                        this.dom.tabs[mode].classList.remove('tab-active', 'bg-primary', 'text-primary-content');
+                    }
+                });
+
+                // Indicadores
+                this.dom.cycleCount.textContent = this.state.completedCycles;
+                const remainingToLongBreak = this.config.longBreakInterval - (this.state.completedCycles % this.config.longBreakInterval);
+                this.dom.nextLongBreakCount.textContent = remainingToLongBreak;
+            },
+
+            updateControlsUI() {
+                if (this.state.isRunning) {
+                    this.dom.btnToggleText.textContent = 'PAUSAR';
+                    this.dom.btnToggleIcon.className = 'fa-solid fa-pause mr-2';
+                    this.dom.btnToggle.classList.replace('btn-primary', 'btn-warning');
+                } else {
+                    this.dom.btnToggleText.textContent = 'INICIAR';
+                    this.dom.btnToggleIcon.className = 'fa-solid fa-play mr-2';
+                    this.dom.btnToggle.classList.replace('btn-warning', 'btn-primary');
+                }
+            },
+
+            saveSettings() {
+                const focusVal = parseInt(this.dom.inputs.focus.value) || 25;
+                const shortVal = parseInt(this.dom.inputs.shortBreak.value) || 5;
+                const longVal = parseInt(this.dom.inputs.longBreak.value) || 15;
+                const intervalVal = parseInt(this.dom.inputs.interval.value) || 4;
+
+                this.config.focus = Math.max(1, focusVal);
+                this.config.shortBreak = Math.max(1, shortVal);
+                this.config.longBreak = Math.max(1, longVal);
+                this.config.longBreakInterval = Math.max(1, intervalVal);
+
+                localStorage.setItem('pf_settings', JSON.stringify({
+                    focus: this.config.focus,
+                    shortBreak: this.config.shortBreak,
+                    longBreak: this.config.longBreak,
+                    longBreakInterval: this.config.longBreakInterval
+                }));
+
+                this.switchMode(this.state.currentMode);
+                document.getElementById('modal_settings').close();
+            }
+        };
+
+        // Inicializar aplicação assim que o DOM carregar
+        window.addEventListener('DOMContentLoaded', () => {
+            pomodoroApp.init();
+        });
+    </script>
+</body>
+</html>
