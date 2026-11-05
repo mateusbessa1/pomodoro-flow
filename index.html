@@ -25,7 +25,7 @@
         html {
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-        /* Custom scrollbar para lista de tarefas */
+        /* Custom scrollbar para listas */
         .custom-scroll::-webkit-scrollbar {
             width: 6px;
         }
@@ -70,11 +70,31 @@
         </div>
     </header>
 
-    <!-- CONTEÚDO PRINCIPAL (LAYOUT EM DUAS COLUNAS EM TELAS MAIORES) -->
+    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 w-full max-w-5xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        <!-- COLUNA ESQUERDA: CARD DO POMODORO -->
+        <!-- COLUNA ESQUERDA: BARRA DE STATUS DE MÚSICA & CARD DO POMODORO -->
         <section class="lg:col-span-7 flex flex-col items-center">
+            
+            <!-- BARRA DE STATUS DE MÚSICA DE FOCO -->
+            <div class="w-full bg-base-100 p-3.5 rounded-2xl flex items-center justify-between mb-4 border border-base-200 shadow-sm" id="tour-music-header">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <span class="music-bar-icon text-primary text-lg flex items-center justify-center w-8 h-8 rounded-xl bg-primary/10">
+                        <i id="music-bar-icon-elem" class="fa-solid fa-headphones"></i>
+                    </span>
+                    <div class="music-bar-meta min-w-0">
+                        <div class="text-[11px] opacity-70 flex items-center gap-2">
+                            <span id="music-bar-source" class="music-bar-source font-semibold">Ruído de Foco · Som Ambiental</span>
+                            <span id="music-bar-status-badge" role="status" class="music-bar-status badge badge-sm badge-warning font-bold" data-status="paused">Pausado</span>
+                        </div>
+                        <strong id="music-bar-track-title" class="music-bar-track text-xs sm:text-sm block font-bold truncate max-w-[200px] sm:max-w-[280px]" title="Nenhum Som Selecionado">Nenhum Som Selecionado</strong>
+                    </div>
+                </div>
+                <button type="button" onclick="drawer_audio.classList.toggle('drawer-open')" class="btn btn-xs sm:btn-sm btn-ghost rounded-xl text-primary font-bold ml-2 shrink-0">
+                    Alterar
+                </button>
+            </div>
+
             <div class="w-full bg-base-100 rounded-3xl p-6 sm:p-8 shadow-2xl border border-base-200">
                 
                 <!-- TAB DE NAVEGAÇÃO DOS MODOS -->
@@ -267,29 +287,10 @@
                     </div>
                     
                     <div class="flex gap-2">
-                        <input id="yt-url-input" type="text" placeholder="Cole a URL ou ID (ex: youtu.be/...)" class="input input-bordered input-sm flex-1 rounded-xl text-xs" />
+                        <input id="yt-url-input" type="url" placeholder="Cole a URL ou ID do YouTube" class="input input-bordered input-sm flex-1 rounded-xl text-xs" />
                         <button onclick="audioManager.loadYouTubeFromInput()" class="btn btn-sm btn-primary rounded-xl text-xs">
                             Carregar
                         </button>
-                    </div>
-
-                    <!-- PRESETS RECOMENDADOS DE FOCO -->
-                    <div class="bg-base-200/60 p-2.5 rounded-2xl">
-                        <span class="text-[11px] font-bold block mb-1.5 opacity-70"><i class="fa-solid fa-bolt text-warning mr-1"></i> Presets Recomendados</span>
-                        <div class="grid grid-cols-2 gap-1.5">
-                            <button onclick="audioManager.loadPresetYouTube('jfKfPfyJRdk', 'Lofi Girl 24/7')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
-                                🎧 Lofi Girl Chill
-                            </button>
-                            <button onclick="audioManager.loadPresetYouTube('5qap5aO4i9A', 'Lofi Hip Hop Synth')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
-                                🌌 Lofi Synthwave
-                            </button>
-                            <button onclick="audioManager.loadPresetYouTube('mPZkdNFkNps', 'Ambient Rain Lofi')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
-                                🌧️ Rain Lofi Chill
-                            </button>
-                            <button onclick="audioManager.loadPresetYouTube('DWcJFNfaw9c', 'Coffee Shop Jazz')" class="btn btn-xs btn-outline rounded-xl text-[10px] justify-start truncate">
-                                ☕ Coffee Shop Jazz
-                            </button>
-                        </div>
                     </div>
 
                     <!-- CONTAINER DO IFRAME COM FALLBACK E NAVEGAÇÃO -->
@@ -298,7 +299,7 @@
                         
                         <div id="yt-placeholder-text" class="absolute inset-0 flex flex-col items-center justify-center text-center p-4 text-xs opacity-60 bg-base-300 pointer-events-none">
                             <i class="fa-brands fa-youtube text-3xl mb-1 text-error opacity-80"></i>
-                            <p>Insira um link do YouTube ou selecione um preset acima.</p>
+                            <p>Insira um link ou ID do YouTube acima.</p>
                         </div>
                     </div>
 
@@ -307,7 +308,7 @@
                         <div class="flex items-start gap-2">
                             <i class="fa-solid fa-triangle-exclamation text-warning text-sm mt-0.5"></i>
                             <div class="flex-1 text-[11px]">
-                                <strong>Aviso de Reprodução:</strong> Caso o vídeo bloqueie por restrição do autor, abra-o diretamente no YouTube.
+                                <strong>Aviso de Reprodução:</strong> Caso o vídeo bloqueie por restrição de incorporação do autor, abra-o diretamente no YouTube.
                             </div>
                         </div>
                         <a id="yt-external-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-warning w-full rounded-xl flex items-center justify-center gap-1.5 text-warning-content font-bold">
@@ -536,8 +537,8 @@
                     }
                 } else {
                     this.playlists = [
-                        { id: 'pl_1', title: 'Deep Focus Lofi 24/7', url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk', videoId: 'jfKfPfyJRdk' },
-                        { id: 'pl_2', title: 'Ambient Rain & Chill', url: 'https://www.youtube.com/watch?v=mPZkdNFkNps', videoId: 'mPZkdNFkNps' }
+                        { id: 'pl_1', title: 'Deep Focus Lofi', url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk', videoId: 'jfKfPfyJRdk' },
+                        { id: 'pl_2', title: 'Ambient Rain', url: 'https://www.youtube.com/watch?v=mPZkdNFkNps', videoId: 'mPZkdNFkNps' }
                     ];
                     this.savePlaylists();
                 }
@@ -569,7 +570,7 @@
                 }
                 this.applyCompactPlayerUI();
                 this.renderPlaylists();
-                this.updateTrackTitleUI();
+                this.updateMusicHeaderBar();
             },
 
             switchSourceTab(tabKey) {
@@ -586,6 +587,7 @@
                     }
                 });
                 this.saveState();
+                this.updateMusicHeaderBar();
             },
 
             extractYouTubeId(input) {
@@ -612,11 +614,6 @@
                 }
             },
 
-            loadPresetYouTube(videoId, title = null) {
-                this.currentTrackIndex = -1;
-                this.setYouTubePlayer(videoId, true, title);
-            },
-
             setYouTubePlayer(videoId, autoPlay = false, titleOverride = null) {
                 this.youtubeVideoId = videoId;
                 const iframe = document.getElementById('yt-iframe');
@@ -636,8 +633,8 @@
                         this.setAmbientTrack('none');
                     }
                 }
-                this.updateTrackTitleUI(titleOverride);
                 this.saveState();
+                this.updateMusicHeaderBar(titleOverride);
             },
 
             clearYouTubePlayer() {
@@ -651,8 +648,8 @@
                 if (placeholder) placeholder.classList.remove('hidden');
                 if (fallbackBanner) fallbackBanner.classList.add('hidden');
                 
-                this.updateTrackTitleUI();
                 this.saveState();
+                this.updateMusicHeaderBar();
             },
 
             toggleCompactPlayer() {
@@ -695,18 +692,66 @@
                 }
             },
 
-            updateTrackTitleUI(titleOverride = null) {
-                const titleEl = document.getElementById('yt-current-track-title');
-                if (!titleEl) return;
+            updateMusicHeaderBar(titleOverride = null) {
+                const sourceEl = document.getElementById('music-bar-source');
+                const titleEl = document.getElementById('music-bar-track-title');
+                const drawerTitleEl = document.getElementById('yt-current-track-title');
+                const statusBadge = document.getElementById('music-bar-status-badge');
+                const iconElem = document.getElementById('music-bar-icon-elem');
+                if (!sourceEl || !titleEl || !statusBadge) return;
 
-                if (titleOverride) {
-                    titleEl.textContent = titleOverride;
-                } else if (this.currentTrackIndex >= 0 && this.playlists[this.currentTrackIndex]) {
-                    titleEl.textContent = this.playlists[this.currentTrackIndex].title;
-                } else if (this.youtubeVideoId) {
-                    titleEl.textContent = `Vídeo: ${this.youtubeVideoId}`;
+                const isTimerRunning = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
+                const hasAmbient = this.currentAmbientTrack !== 'none';
+                const hasYT = Boolean(this.youtubeVideoId);
+
+                // Atualizar Estado (Badge Dinâmica)
+                if (isTimerRunning && (hasAmbient || hasYT)) {
+                    statusBadge.textContent = 'Reproduzindo';
+                    statusBadge.className = 'music-bar-status badge badge-sm badge-success font-bold';
+                    statusBadge.setAttribute('data-status', 'playing');
                 } else {
-                    titleEl.textContent = 'Nenhuma faixa ativa';
+                    statusBadge.textContent = 'Pausado';
+                    statusBadge.className = 'music-bar-status badge badge-sm badge-warning font-bold';
+                    statusBadge.setAttribute('data-status', 'paused');
+                }
+
+                // Atualizar Fonte e Título
+                if (hasYT) {
+                    sourceEl.textContent = 'Música de Foco · YouTube';
+                    if (iconElem) iconElem.className = 'fa-brands fa-youtube text-error';
+                    
+                    let trackName = titleOverride;
+                    if (!trackName && this.currentTrackIndex >= 0 && this.playlists[this.currentTrackIndex]) {
+                        trackName = this.playlists[this.currentTrackIndex].title;
+                    }
+                    if (!trackName) {
+                        trackName = `Vídeo do YouTube (${this.youtubeVideoId})`;
+                    }
+
+                    titleEl.textContent = trackName;
+                    titleEl.title = trackName;
+                    if (drawerTitleEl) drawerTitleEl.textContent = trackName;
+                } else if (hasAmbient) {
+                    sourceEl.textContent = 'Ruído de Foco · Som Ambiental';
+                    if (iconElem) iconElem.className = 'fa-solid fa-wind text-info';
+
+                    const ambientNames = {
+                        rain: 'Chuva Relaxante',
+                        campfire: 'Fogueira & Crepitar',
+                        waves: 'Ondas do Mar',
+                        wind: 'Vento nas Folhas',
+                        ticking: 'Ticking Ritmado'
+                    };
+                    const name = ambientNames[this.currentAmbientTrack] || 'Ruído Ambiental';
+                    titleEl.textContent = name;
+                    titleEl.title = name;
+                    if (drawerTitleEl) drawerTitleEl.textContent = name;
+                } else {
+                    sourceEl.textContent = 'Nenhum Som Selecionado';
+                    if (iconElem) iconElem.className = 'fa-solid fa-headphones text-primary';
+                    titleEl.textContent = 'Silêncio / Sem Áudio';
+                    titleEl.title = 'Silêncio / Sem Áudio';
+                    if (drawerTitleEl) drawerTitleEl.textContent = 'Nenhuma faixa ativa';
                 }
             },
 
@@ -781,7 +826,7 @@
                 this.currentTrackIndex = -1;
                 this.savePlaylists();
                 this.renderPlaylists();
-                this.updateTrackTitleUI();
+                this.updateMusicHeaderBar();
             },
 
             savePlaylists() {
@@ -798,7 +843,7 @@
                 this.saveState();
             },
 
-            // Sincronização estricta com o Pomodoro Core
+            // Sincronização estrita com o Pomodoro Core
             handleTimerStart() {
                 this.initAudioContext();
                 if (this.currentAmbientTrack !== 'none') {
@@ -807,6 +852,7 @@
                 if (this.youtubeVideoId) {
                     this.setYouTubePlayer(this.youtubeVideoId, true);
                 }
+                this.updateMusicHeaderBar();
             },
 
             handleTimerPause() {
@@ -817,6 +863,7 @@
                 if (iframe && iframe.src) {
                     try { iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch(e) {}
                 }
+                this.updateMusicHeaderBar();
             },
 
             handleTimerReset() {
@@ -836,6 +883,7 @@
                         try { iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch(e) {}
                     }
                 }
+                this.updateMusicHeaderBar();
             },
 
             handleModeChange() {
@@ -847,6 +895,7 @@
                         this.setYouTubePlayer(this.youtubeVideoId, true);
                     }
                 }
+                this.updateMusicHeaderBar();
             },
 
             initAudioContext() {
@@ -906,9 +955,13 @@
                 this.currentAmbientTrack = track;
                 this.stopAmbientNoise();
                 if (track !== 'none') {
+                    if (this.youtubeVideoId) {
+                        this.clearYouTubePlayer();
+                    }
                     this.startAmbientNoise(track);
                 }
                 this.updateAmbientButtonsUI();
+                this.updateMusicHeaderBar();
             },
 
             updateAmbientButtonsUI() {
@@ -1215,9 +1268,11 @@
                 }
             },
 
-            editTaskTitle(id, newTitle) {
+            editTaskTitlePrompt(id) {
                 const task = this.tasks.find(t => t.id === id);
-                if (task && newTitle.trim()) {
+                if (!task) return;
+                const newTitle = prompt('Editar título da tarefa:', task.title);
+                if (newTitle && newTitle.trim()) {
                     task.title = newTitle.trim();
                     this.save();
                 }
@@ -1290,8 +1345,8 @@
                         <div class="flex items-center gap-3 flex-1 overflow-hidden">
                             <i class="fa-solid fa-grip-vertical text-base-content/30 text-xs"></i>
                             <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="taskManager.toggleTaskComplete('${task.id}')" class="checkbox checkbox-sm checkbox-primary rounded-lg" />
-                            <div class="flex-1 overflow-hidden">
-                                <p class="text-sm font-semibold truncate ${task.completed ? 'line-through opacity-70' : ''}">
+                            <div class="flex-1 overflow-hidden" ondblclick="taskManager.editTaskTitlePrompt('${task.id}')">
+                                <p class="text-sm font-semibold truncate ${task.completed ? 'line-through opacity-70' : ''}" title="Duplo clique para editar">
                                     ${task.title}
                                 </p>
                                 <div class="flex items-center gap-2 text-[10px] text-base-content/60 mt-0.5">
@@ -1427,11 +1482,11 @@
             startTimer() {
                 if (this.state.isRunning) return;
 
-                // Sincronização: Dispara áudio / YouTube automaticamente ao iniciar
-                audioManager.handleTimerStart();
-
                 this.state.isRunning = true;
                 this.state.targetEndTime = Date.now() + (this.state.timeLeft * 1000);
+
+                // Sincronização: Dispara áudio / YouTube automaticamente ao iniciar
+                audioManager.handleTimerStart();
 
                 this.state.timerId = setInterval(() => {
                     const now = Date.now();
