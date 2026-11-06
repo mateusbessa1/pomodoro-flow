@@ -43,7 +43,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen bg-base-300 text-base-content flex flex-col justify-between transition-all duration-300">
+<body class="min-h-screen bg-base-300 text-base-content flex flex-col justify-between transition-all duration-300 overflow-x-hidden">
 
     <!-- CABEÇALHO DA APLICAÇÃO -->
     <header class="w-full max-w-5xl mx-auto px-4 py-5 flex justify-between items-center">
@@ -71,23 +71,23 @@
     </header>
 
     <!-- CONTEÚDO PRINCIPAL -->
-    <main class="flex-1 w-full max-w-5xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <main class="flex-1 w-full max-w-5xl mx-auto p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start box-border">
         
         <!-- COLUNA ESQUERDA: BARRA DE STATUS DE MÚSICA & CARD DO POMODORO -->
-        <section class="lg:col-span-7 flex flex-col items-center">
+        <section class="lg:col-span-7 flex flex-col items-center w-full max-w-full">
             
             <!-- BARRA DE STATUS DE MÚSICA DE FOCO -->
-            <div class="w-full bg-base-100 p-3.5 rounded-2xl flex items-center justify-between mb-4 border border-base-200 shadow-sm" id="tour-music-header">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <span class="music-bar-icon text-primary text-lg flex items-center justify-center w-8 h-8 rounded-xl bg-primary/10">
+            <div class="w-full bg-base-100 p-3 sm:p-3.5 rounded-2xl flex items-center justify-between mb-4 border border-base-200 shadow-sm box-border" id="tour-music-header">
+                <div class="flex items-center gap-3 overflow-hidden min-w-0">
+                    <span class="music-bar-icon text-primary text-lg flex items-center justify-center w-8 h-8 rounded-xl bg-primary/10 shrink-0">
                         <i id="music-bar-icon-elem" class="fa-solid fa-headphones"></i>
                     </span>
-                    <div class="music-bar-meta min-w-0">
-                        <div class="text-[11px] opacity-70 flex items-center gap-2">
-                            <span id="music-bar-source" class="music-bar-source font-semibold">Ruído de Foco · Som Ambiental</span>
-                            <span id="music-bar-status-badge" role="status" class="music-bar-status badge badge-sm badge-warning font-bold" data-status="paused">Pausado</span>
+                    <div class="music-bar-meta min-w-0 flex-1">
+                        <div class="text-[11px] opacity-70 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            <span id="music-bar-source" class="music-bar-source font-semibold truncate">Ruído de Foco · Som Ambiental</span>
+                            <span id="music-bar-status-badge" role="status" class="music-bar-status badge badge-sm badge-warning font-bold shrink-0" data-status="paused">Pausado</span>
                         </div>
-                        <strong id="music-bar-track-title" class="music-bar-track text-xs sm:text-sm block font-bold truncate max-w-[200px] sm:max-w-[280px]" title="Nenhum Som Selecionado">Nenhum Som Selecionado</strong>
+                        <strong id="music-bar-track-title" class="music-bar-track text-xs sm:text-sm block font-bold truncate max-w-full" title="Nenhum Som Selecionado">Nenhum Som Selecionado</strong>
                     </div>
                 </div>
                 <button type="button" onclick="drawer_audio.classList.toggle('drawer-open')" class="btn btn-xs sm:btn-sm btn-ghost rounded-xl text-primary font-bold ml-2 shrink-0">
@@ -95,7 +95,7 @@
                 </button>
             </div>
 
-            <div class="w-full bg-base-100 rounded-3xl p-6 sm:p-8 shadow-2xl border border-base-200">
+            <div class="w-full bg-base-100 rounded-3xl p-5 sm:p-8 shadow-2xl border border-base-200 box-border">
                 
                 <!-- TAB DE NAVEGAÇÃO DOS MODOS -->
                 <div class="tabs tabs-boxed bg-base-200 p-1.5 rounded-2xl flex justify-between gap-1 mb-6">
@@ -112,7 +112,7 @@
 
                 <!-- EXIBIÇÃO DO TEMPORIZADOR CIRCULAR -->
                 <div class="flex flex-col items-center justify-center my-4">
-                    <div class="relative w-60 h-60 sm:w-68 sm:h-68 flex items-center justify-center">
+                    <div class="relative w-56 h-56 sm:w-68 sm:h-68 flex items-center justify-center">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                             <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="4" fill="transparent" class="text-base-200"></circle>
                             <circle id="progress-ring" cx="50" cy="50" r="44" stroke="currentColor" stroke-width="5" fill="transparent" stroke-dasharray="276.46" stroke-dashoffset="0" stroke-linecap="round" class="text-primary transition-all duration-1000 ease-linear"></circle>
@@ -169,8 +169,8 @@
         </section>
 
         <!-- COLUNA DIREITA: GERENCIADOR DE TAREFAS -->
-        <section class="lg:col-span-5 w-full">
-            <div class="bg-base-100 rounded-3xl p-6 shadow-2xl border border-base-200 flex flex-col h-full min-h-[480px]">
+        <section class="lg:col-span-5 w-full max-w-full">
+            <div class="bg-base-100 rounded-3xl p-4 sm:p-6 shadow-2xl border border-base-200 flex flex-col h-full min-h-[480px] box-border">
                 
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-2">
@@ -180,12 +180,12 @@
                     <span id="task-stats" class="text-xs bg-base-200 px-3 py-1 rounded-full font-semibold opacity-80">0 / 0 concluídas</span>
                 </div>
 
-                <!-- FORMULÁRIO DE ADIÇÃO DE TAREFA -->
-                <form id="form-add-task" onsubmit="taskManager.handleAddTask(event)" class="flex flex-col gap-2 mb-4">
-                    <div class="flex gap-2">
-                        <input id="input-task-title" type="text" placeholder="O que você vai focar hoje?" class="input input-bordered input-sm flex-1 rounded-xl text-sm" required />
-                        <input id="input-task-est" type="number" min="1" max="20" value="1" title="Estimativa de Pomodoros" class="input input-bordered input-sm w-16 rounded-xl text-center text-sm font-semibold" />
-                        <button type="submit" class="btn btn-primary btn-sm rounded-xl">
+                <!-- FORMULÁRIO DE ADIÇÃO DE TAREFA (MOBILE RESPONSIVE FIX) -->
+                <form id="form-add-task" onsubmit="taskManager.handleAddTask(event)" class="flex flex-wrap sm:flex-nowrap gap-2 items-center w-full min-w-0 mb-4">
+                    <input id="input-task-title" type="text" placeholder="O que você vai focar hoje?" class="input input-bordered input-sm flex-1 min-w-0 w-full sm:w-auto rounded-xl text-sm" required />
+                    <div class="flex gap-2 items-center shrink-0 w-full sm:w-auto justify-end">
+                        <input id="input-task-est" type="number" min="1" max="20" value="1" title="Estimativa de Pomodoros" class="input input-bordered input-sm w-16 shrink-0 rounded-xl text-center text-sm font-semibold" />
+                        <button type="submit" class="btn btn-primary btn-sm rounded-xl shrink-0">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
@@ -276,7 +276,7 @@
                     </div>
                 </div>
 
-                <!-- ABA 2: PLAYER YOUTUBE EMBUTIDO -->
+                <!-- ABA 2: PLAYER YOUTUBE EMBUTIDO (LIMPO / SEM PRESETS) -->
                 <div id="audio-panel-youtube" class="audio-tab-panel hidden space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="label text-xs font-extrabold uppercase tracking-wider text-base-content/70">Música do YouTube</label>
@@ -573,6 +573,45 @@
                 this.updateMusicHeaderBar();
             },
 
+            // Envia comandos JSON diretos via postMessage para o iframe do YouTube sem recarregar o elemento
+            sendYouTubeCommand(funcName, args = "") {
+                const iframe = document.getElementById('yt-iframe');
+                if (iframe && iframe.contentWindow) {
+                    try {
+                        iframe.contentWindow.postMessage(JSON.stringify({
+                            event: 'command',
+                            func: funcName,
+                            args: args
+                        }), '*');
+                    } catch (e) {
+                        console.error('Erro postMessage YouTube:', e);
+                    }
+                }
+            },
+
+            playYouTube() {
+                this.sendYouTubeCommand('playVideo');
+            },
+
+            pauseYouTube() {
+                this.sendYouTubeCommand('pauseVideo');
+            },
+
+            seekYouTubeToStart() {
+                this.sendYouTubeCommand('seekTo', [0, true]);
+            },
+
+            syncYouTubeVolume() {
+                if (!this.youtubeVideoId) return;
+                const ytVolume = Math.round(this.masterVolume * 100);
+                this.sendYouTubeCommand('setVolume', [ytVolume]);
+                if (this.isMuted) {
+                    this.sendYouTubeCommand('mute');
+                } else {
+                    this.sendYouTubeCommand('unMute');
+                }
+            },
+
             switchSourceTab(tabKey) {
                 this.activeSourceTab = tabKey;
                 ['local', 'youtube', 'playlist'].forEach(t => {
@@ -610,21 +649,28 @@
                     this.setYouTubePlayer(videoId, true);
                     inputEl.value = '';
                 } else {
-                    console.warn('URL inválida');
+                    console.warn('URL ou ID do YouTube inválido');
                 }
             },
 
             setYouTubePlayer(videoId, autoPlay = false, titleOverride = null) {
-                this.youtubeVideoId = videoId;
                 const iframe = document.getElementById('yt-iframe');
                 const placeholder = document.getElementById('yt-placeholder-text');
                 const fallbackBanner = document.getElementById('yt-fallback-banner');
                 const externalLink = document.getElementById('yt-external-link');
                 
+                const isSameVideo = this.youtubeVideoId === videoId && iframe && iframe.src.includes(videoId);
+                this.youtubeVideoId = videoId;
+                
                 if (iframe && videoId) {
-                    const originParam = window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
-                    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=${autoPlay ? 1 : 0}${originParam}`;
-                    
+                    // Reatribui src APENAS se o vídeo realmente mudou, evitando recarregar o iframe ao pausar/iniciar
+                    if (!isSameVideo) {
+                        const originParam = window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
+                        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=${autoPlay ? 1 : 0}${originParam}`;
+                    } else if (autoPlay) {
+                        this.playYouTube();
+                    }
+
                     if (placeholder) placeholder.classList.add('hidden');
                     if (fallbackBanner) fallbackBanner.classList.remove('hidden');
                     if (externalLink) externalLink.href = `https://www.youtube.com/watch?v=${videoId}`;
@@ -632,6 +678,8 @@
                     if (autoPlay && this.currentAmbientTrack !== 'none') {
                         this.setAmbientTrack('none');
                     }
+
+                    setTimeout(() => this.syncYouTubeVolume(), 500);
                 }
                 this.saveState();
                 this.updateMusicHeaderBar(titleOverride);
@@ -707,11 +755,11 @@
                 // Atualizar Estado (Badge Dinâmica)
                 if (isTimerRunning && (hasAmbient || hasYT)) {
                     statusBadge.textContent = 'Reproduzindo';
-                    statusBadge.className = 'music-bar-status badge badge-sm badge-success font-bold';
+                    statusBadge.className = 'music-bar-status badge badge-sm badge-success font-bold shrink-0';
                     statusBadge.setAttribute('data-status', 'playing');
                 } else {
                     statusBadge.textContent = 'Pausado';
-                    statusBadge.className = 'music-bar-status badge badge-sm badge-warning font-bold';
+                    statusBadge.className = 'music-bar-status badge badge-sm badge-warning font-bold shrink-0';
                     statusBadge.setAttribute('data-status', 'paused');
                 }
 
@@ -794,7 +842,7 @@
                 if (!url) return;
                 const videoId = this.extractYouTubeId(url);
                 if (!videoId) {
-                    console.warn('URL inválida');
+                    console.warn('URL ou ID do YouTube inválido');
                     return;
                 }
                 let title = prompt('Nome para a faixa (opcional):');
@@ -843,14 +891,14 @@
                 this.saveState();
             },
 
-            // Sincronização estrita com o Pomodoro Core
+            // Sincronização estrita com o Pomodoro Core sem recarregar o Iframe
             handleTimerStart() {
                 this.initAudioContext();
                 if (this.currentAmbientTrack !== 'none') {
-                    this.setAmbientTrack(this.currentAmbientTrack);
+                    this.startAmbientNoise(this.currentAmbientTrack);
                 }
                 if (this.youtubeVideoId) {
-                    this.setYouTubePlayer(this.youtubeVideoId, true);
+                    this.playYouTube();
                 }
                 this.updateMusicHeaderBar();
             },
@@ -859,9 +907,8 @@
                 if (this.autoPauseAmbient) {
                     this.stopAmbientNoise();
                 }
-                const iframe = document.getElementById('yt-iframe');
-                if (iframe && iframe.src) {
-                    try { iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch(e) {}
+                if (this.youtubeVideoId) {
+                    this.pauseYouTube();
                 }
                 this.updateMusicHeaderBar();
             },
@@ -870,29 +917,34 @@
                 if (this.autoPauseAmbient) {
                     this.stopAmbientNoise();
                 }
-                if (this.restartOnReset) {
-                    if (this.currentAmbientTrack !== 'none') {
-                        this.setAmbientTrack(this.currentAmbientTrack);
+                if (this.youtubeVideoId) {
+                    if (this.restartOnReset) {
+                        this.seekYouTubeToStart();
+                        if (pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning) {
+                            this.playYouTube();
+                        } else {
+                            this.pauseYouTube();
+                        }
+                    } else {
+                        this.pauseYouTube();
                     }
-                    if (this.youtubeVideoId) {
-                        this.setYouTubePlayer(this.youtubeVideoId, true);
-                    }
-                } else {
-                    const iframe = document.getElementById('yt-iframe');
-                    if (iframe && iframe.src) {
-                        try { iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch(e) {}
-                    }
+                }
+                if (this.restartOnReset && this.currentAmbientTrack !== 'none') {
+                    this.setAmbientTrack(this.currentAmbientTrack);
                 }
                 this.updateMusicHeaderBar();
             },
 
             handleModeChange() {
                 if (this.restartOnModeChange) {
+                    if (this.youtubeVideoId) {
+                        this.seekYouTubeToStart();
+                        if (pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning) {
+                            this.playYouTube();
+                        }
+                    }
                     if (this.currentAmbientTrack !== 'none') {
                         this.setAmbientTrack(this.currentAmbientTrack);
-                    }
-                    if (this.youtubeVideoId) {
-                        this.setYouTubePlayer(this.youtubeVideoId, true);
                     }
                 }
                 this.updateMusicHeaderBar();
@@ -921,6 +973,7 @@
                 if (this.masterGain) {
                     this.masterGain.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
                 }
+                this.syncYouTubeVolume();
                 this.updateVolumeDisplay();
                 this.saveState();
             },
@@ -931,6 +984,7 @@
                 if (this.masterGain) {
                     this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.masterVolume, this.ctx.currentTime);
                 }
+                this.syncYouTubeVolume();
                 this.updateVolumeDisplay();
                 this.saveState();
             },
@@ -1342,10 +1396,10 @@
                     item.addEventListener('dragend', (e) => this.handleDragEnd(e));
 
                     item.innerHTML = `
-                        <div class="flex items-center gap-3 flex-1 overflow-hidden">
-                            <i class="fa-solid fa-grip-vertical text-base-content/30 text-xs"></i>
-                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="taskManager.toggleTaskComplete('${task.id}')" class="checkbox checkbox-sm checkbox-primary rounded-lg" />
-                            <div class="flex-1 overflow-hidden" ondblclick="taskManager.editTaskTitlePrompt('${task.id}')">
+                        <div class="flex items-center gap-3 flex-1 overflow-hidden min-w-0">
+                            <i class="fa-solid fa-grip-vertical text-base-content/30 text-xs shrink-0"></i>
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="taskManager.toggleTaskComplete('${task.id}')" class="checkbox checkbox-sm checkbox-primary rounded-lg shrink-0" />
+                            <div class="flex-1 overflow-hidden min-w-0" ondblclick="taskManager.editTaskTitlePrompt('${task.id}')">
                                 <p class="text-sm font-semibold truncate ${task.completed ? 'line-through opacity-70' : ''}" title="Duplo clique para editar">
                                     ${task.title}
                                 </p>
@@ -1354,7 +1408,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1 shrink-0">
                             <button onclick="taskManager.setActiveTask('${task.id}')" class="btn btn-xs ${isActive ? 'btn-primary' : 'btn-ghost'} btn-circle" title="${isActive ? 'Desativar de Foco' : 'Definir como Foco Principal'}">
                                 <i class="fa-solid fa-bullseye"></i>
                             </button>
