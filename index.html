@@ -485,7 +485,7 @@
     <!-- SCRIPTS DA APLICAÇÃO (MÓDULOS DE ÁUDIO, TAREFAS E TEMPORIZADOR) -->
     <script>
         /**
-         * 1. MÓDULO DE SINTETIZADOR DE ÁUDIO, YOUTUBE & ALARMES (SINGLE INSTANCE AUDIO)
+         * 1. MÓDULO DE SINTETIZADOR DE ÁUDIO, YOUTUBE & ALARMES (SINGLE INSTANCE AUDIO & PREVIEW LOGIC)
          */
         const audioManager = {
             ctx: null,
@@ -504,8 +504,10 @@
             playlists: [],
             currentTrackIndex: -1,
             ambientNode: null,
+            ambientTimerId: null,
             isCompactPlayer: false,
             activeAudioType: 'none', // 'none', 'ambient', 'youtube'
+            isPreviewing: false,
 
             init() {
                 const savedAudio = localStorage.getItem('pf_audio_config');
@@ -567,7 +569,7 @@
                 this.switchSourceTab(this.activeSourceTab);
 
                 if (this.youtubeVideoId) {
-                    this.setYouTubePlayer(this.youtubeVideoId, false);
+                    this.setYouTubePlayer(this.youtubeVideoId, false, null, false);
                 }
                 this.applyCompactPlayerUI();
                 this.renderPlaylists();
@@ -583,23 +585,24 @@
                 const drawer = document.getElementById('drawer_audio');
                 if (drawer) drawer.classList.remove('drawer-open');
 
-                // Se o temporizador estiver pausado ao fechar a gaveta, garanta que qualquer áudio seja pausado instantaneamente
-                if (pomodoroApp && pomodoroApp.state && !pomodoroApp.state.isRunning) {
+                // Regra de Fechamento do Modal:
+                // Se o temporizador estiver pausado, interrompa qualquer prévia imediatamente para evitar vazamento de som.
+                // Se o temporizador estiver rodando, mantenha a faixa selecionada tocando normalmente.
+                const isTimerRunning = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
+                if (!isTimerRunning) {
                     this.stopAllAudio();
-                    this.updateMusicHeaderBar();
+                } else {
+                    this.isPreviewing = false;
+                    this.syncMediaState();
                 }
+                this.updateMusicHeaderBar();
             },
 
-            // Interrompe absolutamente todas as instâncias de áudio para evitar duplicação (Single Instance Audio)
-            stopAllAudio(keepYouTubeState = false) {
+            // Interrompe absolutamente todas as instâncias de áudio para garantir fonte única (Single Instance)
+            stopAllAudio() {
                 this.stopAmbientNoise();
                 this.pauseYouTube();
-                if (!keepYouTubeState && this.activeAudioType === 'ambient') {
-                    // Limpa apenas som de fundo Web Audio
-                }
-                if (this.currentAmbientTrack === 'none' && !this.youtubeVideoId) {
-                    this.activeAudioType = 'none';
-                }
+                this.isPreviewing = false;
             },
 
             // Envia comandos JSON diretos via postMessage para o iframe do YouTube sem recarregar o elemento
@@ -680,21 +683,21 @@
                 const videoId = this.extractYouTubeId(rawVal);
                 if (videoId) {
                     this.currentTrackIndex = -1;
-                    const shouldAutoPlay = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
-                    this.setYouTubePlayer(videoId, shouldAutoPlay);
+                    // Ao carregar do input dentro do modal, habilita preview imediato
+                    this.setYouTubePlayer(videoId, true, null, true);
                     inputEl.value = '';
                 } else {
                     console.warn('URL ou ID do YouTube inválido');
                 }
             },
 
-            setYouTubePlayer(videoId, autoPlay = false, titleOverride = null) {
+            setYouTubePlayer(videoId, autoPlay = false, titleOverride = null, triggerPreview = true) {
                 const iframe = document.getElementById('yt-iframe');
                 const placeholder = document.getElementById('yt-placeholder-text');
                 const fallbackBanner = document.getElementById('yt-fallback-banner');
                 const externalLink = document.getElementById('yt-external-link');
                 
-                // Desativa ruídos ambientais caso uma mídia do YouTube seja carregada
+                // Desativa e limpa ruídos ambientais anteriores
                 this.currentAmbientTrack = 'none';
                 this.stopAmbientNoise();
                 this.updateAmbientButtonsUI();
@@ -703,12 +706,16 @@
                 this.youtubeVideoId = videoId;
                 this.activeAudioType = 'youtube';
                 
+                if (triggerPreview) {
+                    this.isPreviewing = true;
+                }
+
                 if (iframe && videoId) {
-                    // Reatribui src APENAS se o vídeo realmente mudou, evitando recarregar o iframe ao pausar/iniciar
+                    // Reatribui src APENAS se o vídeo realmente mudou, evitando reiniciar/recarregar o iframe
                     if (!isSameVideo) {
                         const originParam = window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
-                        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=${autoPlay ? 1 : 0}${originParam}`;
-                    } else if (autoPlay) {
+                        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=${(autoPlay || triggerPreview) ? 1 : 0}${originParam}`;
+                    } else if (autoPlay || triggerPreview) {
                         this.playYouTube();
                     }
 
@@ -726,6 +733,7 @@
                 this.youtubeVideoId = '';
                 this.currentTrackIndex = -1;
                 this.activeAudioType = (this.currentAmbientTrack !== 'none') ? 'ambient' : 'none';
+                this.isPreviewing = false;
                 
                 const iframe = document.getElementById('yt-iframe');
                 const placeholder = document.getElementById('yt-placeholder-text');
@@ -766,8 +774,7 @@
                 this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlists.length;
                 const track = this.playlists[this.currentTrackIndex];
                 if (track && track.videoId) {
-                    const shouldPlay = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
-                    this.setYouTubePlayer(track.videoId, shouldPlay, track.title);
+                    this.setYouTubePlayer(track.videoId, true, track.title, true);
                 }
             },
 
@@ -776,8 +783,7 @@
                 this.currentTrackIndex = (this.currentTrackIndex - 1 + this.playlists.length) % this.playlists.length;
                 const track = this.playlists[this.currentTrackIndex];
                 if (track && track.videoId) {
-                    const shouldPlay = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
-                    this.setYouTubePlayer(track.videoId, shouldPlay, track.title);
+                    this.setYouTubePlayer(track.videoId, true, track.title, true);
                 }
             },
 
@@ -792,10 +798,11 @@
                 const isTimerRunning = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
                 const hasAmbient = this.currentAmbientTrack !== 'none';
                 const hasYT = Boolean(this.youtubeVideoId);
+                const isMediaActive = (hasAmbient || hasYT) && (isTimerRunning || this.isPreviewing);
 
-                // Atualizar Estado (Badge Dinâmica)
-                if (isTimerRunning && (hasAmbient || hasYT)) {
-                    statusBadge.textContent = 'Reproduzindo';
+                // Atualizar Badge de Estado
+                if (isMediaActive) {
+                    statusBadge.textContent = this.isPreviewing ? 'Testando Preview' : 'Reproduzindo';
                     statusBadge.className = 'music-bar-status badge badge-sm badge-success font-bold shrink-0';
                     statusBadge.setAttribute('data-status', 'playing');
                 } else {
@@ -866,7 +873,7 @@
                             <span class="font-semibold truncate ${isPlaying ? 'text-primary' : ''}">${pl.title}</span>
                         </div>
                         <div class="flex items-center gap-1">
-                            <button onclick="audioManager.playPlaylistIndex(${idx})" class="btn btn-xs ${isPlaying ? 'btn-primary' : 'btn-ghost'} rounded-lg" title="Tocar">
+                            <button onclick="audioManager.playPlaylistIndex(${idx})" class="btn btn-xs ${isPlaying ? 'btn-primary' : 'btn-ghost'} rounded-lg" title="Testar / Tocar">
                                 <i class="fa-solid fa-play"></i>
                             </button>
                             <button onclick="audioManager.deletePlaylist('${pl.id}')" class="btn btn-xs btn-ghost text-error rounded-lg" title="Excluir">
@@ -905,8 +912,7 @@
                     this.currentTrackIndex = idx;
                     const pl = this.playlists[idx];
                     this.switchSourceTab('youtube');
-                    const shouldPlay = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
-                    this.setYouTubePlayer(pl.videoId, shouldPlay, pl.title);
+                    this.setYouTubePlayer(pl.videoId, true, pl.title, true);
                     this.renderPlaylists();
                 }
             },
@@ -933,64 +939,60 @@
                 this.saveState();
             },
 
-            // Sincronização estrita com o Pomodoro Core sem recarregar o Iframe
-            handleTimerStart() {
+            // Sincronização direta com as ações do Pomodoro
+            syncMediaState() {
                 this.initAudioContext();
-                this.stopAllAudio();
+                const isRunning = pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning;
 
-                if (this.youtubeVideoId) {
-                    this.playYouTube();
-                } else if (this.currentAmbientTrack !== 'none') {
-                    this.startAmbientNoise(this.currentAmbientTrack);
+                if (isRunning) {
+                    if (this.youtubeVideoId) {
+                        this.playYouTube();
+                    } else if (this.currentAmbientTrack !== 'none') {
+                        this.startAmbientNoise(this.currentAmbientTrack);
+                    }
+                } else {
+                    if (this.autoPauseAmbient) {
+                        this.stopAmbientNoise();
+                    }
+                    if (this.youtubeVideoId) {
+                        this.pauseYouTube();
+                    }
                 }
                 this.updateMusicHeaderBar();
+            },
+
+            handleTimerStart() {
+                this.isPreviewing = false;
+                this.syncMediaState();
             },
 
             handleTimerPause() {
-                if (this.autoPauseAmbient) {
-                    this.stopAmbientNoise();
-                }
-                if (this.youtubeVideoId) {
-                    this.pauseYouTube();
-                }
-                this.updateMusicHeaderBar();
+                this.isPreviewing = false;
+                this.syncMediaState();
             },
 
             handleTimerReset() {
+                this.isPreviewing = false;
                 if (this.autoPauseAmbient) {
                     this.stopAmbientNoise();
                 }
                 if (this.youtubeVideoId) {
                     if (this.restartOnReset) {
                         this.seekYouTubeToStart();
-                        if (pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning) {
-                            this.playYouTube();
-                        } else {
-                            this.pauseYouTube();
-                        }
-                    } else {
-                        this.pauseYouTube();
                     }
-                }
-                if (this.restartOnReset && this.currentAmbientTrack !== 'none' && !this.youtubeVideoId) {
-                    this.setAmbientTrack(this.currentAmbientTrack);
+                    this.pauseYouTube();
                 }
                 this.updateMusicHeaderBar();
             },
 
             handleModeChange() {
+                this.isPreviewing = false;
                 if (this.restartOnModeChange) {
                     if (this.youtubeVideoId) {
                         this.seekYouTubeToStart();
-                        if (pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning) {
-                            this.playYouTube();
-                        }
-                    }
-                    if (this.currentAmbientTrack !== 'none' && !this.youtubeVideoId) {
-                        this.setAmbientTrack(this.currentAmbientTrack);
                     }
                 }
-                this.updateMusicHeaderBar();
+                this.syncMediaState();
             },
 
             initAudioContext() {
@@ -1050,7 +1052,7 @@
             setAmbientTrack(track) {
                 this.initAudioContext();
                 
-                // Se uma faixa do YouTube estiver carregada, limpa para priorizar ruído
+                // Se uma faixa do YouTube estiver ativa, limpa para priorizar ruído ambiental
                 if (this.youtubeVideoId && track !== 'none') {
                     this.clearYouTubePlayer();
                 }
@@ -1060,11 +1062,12 @@
 
                 if (track !== 'none') {
                     this.activeAudioType = 'ambient';
-                    if (pomodoroApp && pomodoroApp.state && pomodoroApp.state.isRunning) {
-                        this.startAmbientNoise(track);
-                    }
+                    // Permite preview independente imediato
+                    this.isPreviewing = true;
+                    this.startAmbientNoise(track);
                 } else {
                     if (!this.youtubeVideoId) this.activeAudioType = 'none';
+                    this.isPreviewing = false;
                 }
 
                 this.updateAmbientButtonsUI();
@@ -1087,7 +1090,7 @@
 
             startAmbientNoise(type) {
                 if (!this.ctx) return;
-                this.stopAmbientNoise(); // Evita sobreposição de ruídos
+                this.stopAmbientNoise(); // Evita sobreposição de nós
                 
                 const bufferSize = this.ctx.sampleRate * 2;
                 const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -1596,7 +1599,7 @@
                 this.state.isRunning = true;
                 this.state.targetEndTime = Date.now() + (this.state.timeLeft * 1000);
 
-                // Sincronização: Dispara áudio / YouTube automaticamente ao iniciar
+                // Sincronização: Ativa o áudio/vídeo previamente configurado sem duplicações
                 audioManager.handleTimerStart();
 
                 this.state.timerId = setInterval(() => {
@@ -1623,7 +1626,7 @@
                     this.state.timerId = null;
                 }
 
-                // Sincronização: Pausa o áudio / YouTube ao pausar
+                // Sincronização: Pausa o áudio/vídeo
                 audioManager.handleTimerPause();
                 this.updateControlsUI();
             },
@@ -1633,7 +1636,7 @@
                 this.state.totalDuration = this.config[this.state.currentMode] * 60;
                 this.state.timeLeft = this.state.totalDuration;
 
-                // Sincronização: Gerencia reset de áudio
+                // Sincronização: Gerencia reset de mídia
                 audioManager.handleTimerReset();
                 this.updateUI();
             },
